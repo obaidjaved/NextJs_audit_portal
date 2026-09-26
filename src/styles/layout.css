@@ -1,0 +1,152 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  background:
+    radial-gradient(60% 55% at 8% -8%, var(--bg-spot), transparent 60%),
+    linear-gradient(165deg, var(--bg1), var(--bg2));
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .disp {
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: inherit;
+}
+
+/* App shell: fixed left sidebar + scrollable content, collapsing to a
+   mobile top bar + bottom tab bar under 860px (matches design-3.html). */
+.app-shell {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  min-height: 100vh;
+}
+
+.app-content {
+  min-width: 0;
+}
+
+.app-main {
+  min-width: 0;
+  padding: 28px 32px 96px;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-main {
+    padding: 16px 16px 84px;
+  }
+}
+
+/* The dashboard's 4-up row (feature card / week / score ring / fleet health). */
+.ops-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 1180px) {
+  .ops-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .ops-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .picker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Grid of uniform cards — Templates library, New Audit picker, etc. */
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cust-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 300px;
+  gap: 20px;
+}
+
+.cust-shell > * {
+  min-width: 0;
+}
+
+/* Below ~1400px the history column drops under the list + overview. */
+@media (max-width: 1400px) {
+  .cust-shell {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .cust-shell > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .cust-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tb-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 860px) {
+  .tb-panel-grid {
+    grid-template-columns: 1fr;
+  }
+}

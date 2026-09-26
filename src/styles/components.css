@@ -1,0 +1,319 @@
+.card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+}
+
+.card-soft {
+  background: var(--card-soft);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+}
+
+/* .btn is itself the solid accent button by default (matches design-3.html) —
+   .ghost is the modifier that overrides it, not the other way round. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  border: none;
+  font: 700 13.5px var(--font-display);
+  cursor: pointer;
+  background: var(--accent);
+  color: #1a0d02;
+  box-shadow: var(--accent-shadow);
+  transition: transform .1s ease, opacity .15s ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.btn:hover {
+  background: var(--accent-deep);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn[disabled] {
+  opacity: .4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn[hidden] {
+  display: none;
+}
+
+.btn.sm {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #1a0d02;
+}
+
+.btn.ghost {
+  background: var(--bg1);
+  color: var(--ink);
+  box-shadow: none;
+  border: 1.5px solid var(--rule-2);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  line-height: 1.3;
+}
+
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.danger { background: var(--danger-soft); color: var(--danger); }
+.pill.pending { background: var(--pending-soft); color: var(--pending); }
+.pill.accent { background: var(--accent-soft); color: var(--accent-ink); }
+
+.form-row {
+  margin-bottom: 16px;
+}
+
+.form-row label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.status-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--bg1);
+  border-radius: 14px;
+  padding: 5px;
+}
+
+.status-picker button {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1.5px solid var(--rule-2);
+  background: var(--card);
+  color: var(--ink-2);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+  white-space: nowrap;
+}
+
+.status-picker button:hover {
+  border-color: var(--ink-3);
+}
+
+.status-picker button.on {
+  color: #fff;
+}
+
+.status-picker button.on.ok { background: var(--ok); border-color: var(--ok); }
+.status-picker button.on.warn { background: var(--warn); border-color: var(--warn); }
+.status-picker button.on.danger { background: var(--danger); border-color: var(--danger); }
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg1);
+  border-radius: 14px;
+  padding: 11px 14px;
+}
+
+.search-box svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ink-3);
+  flex: 0 0 auto;
+}
+
+.search-box input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  min-width: 0;
+}
+
+/* Filter/tab toggle row — e.g. Audits status filters, List/Calendar tabs. */
+.filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-row button,
+.filter-row a {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--rule-2);
+  background: var(--bg1);
+  color: var(--ink-2);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-row button:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.filter-row button.active,
+.filter-row a.active {
+  background: var(--pill);
+  color: var(--pill-ink);
+  border-color: var(--pill);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1.5px solid var(--rule-2);
+  background: var(--bg1);
+  color: var(--ink);
+  border-radius: var(--radius-input);
+  padding: 12px 15px;
+  font: 500 13.5px var(--font-body);
+  cursor: text;
+}
+
+.select {
+  cursor: pointer;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 68px;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pick-card {
+  background: var(--bg1);
+  border-radius: var(--radius-pick);
+  padding: 16px 18px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color .12s ease, transform .1s ease;
+}
+
+.pick-card:hover {
+  transform: translateY(-2px);
+}
+
+.pick-card[data-selected="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.cal-head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.cal-nav { display: flex; gap: 6px; }
+.cal-nav button { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--bg1); color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cal-nav button svg { width: 13px; height: 13px; }
+
+/* Calendar — container-query responsive, since the same grid renders at
+   very different widths depending on which page embeds it. */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: calwrap;
+}
+
+.cal-cell {
+  min-height: 64px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: var(--card-soft);
+}
+
+.cal-dow {
+  font: 700 11px var(--font-body);
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.cal-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.cal-event .en {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.cal-event .ea {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+}
+
+@container calwrap (max-width: 420px) {
+  .cal-event .en { display: none; }
+  .cal-event { justify-content: center; padding: 4px; gap: 0; }
+  .cal-dow { font-size: 10px; }
+}
+
+@container calwrap (max-width: 300px) {
+  .cal-cell { min-height: 40px; padding: 4px; font-size: 9.5px; }
+  .cal-event { padding: 2px; }
+  .cal-event .ea { width: 12px; height: 12px; font-size: 7px; }
+  .cal-cell .num { font-size: 10.5px; }
+}

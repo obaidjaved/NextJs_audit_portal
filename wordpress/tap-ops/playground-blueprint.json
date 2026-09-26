@@ -1,0 +1,15 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "landingPage": "/wp-json/tap/v1/users",
+  "preferredVersions": { "php": "8.2", "wp": "latest" },
+  "steps": [
+    {
+      "step": "defineWpConfigConsts",
+      "consts": {
+        "TAP_API_KEY": "test-key-123",
+        "TAP_ALLOW_DEV_SEED": true
+      }
+    },
+    { "step": "activatePlugin", "pluginPath": "tap-ops/tap-ops.php" }
+  ]
+}

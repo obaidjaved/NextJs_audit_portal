@@ -1,0 +1,23 @@
+@media print {
+  .sidebar,
+  .topbar,
+  .bottom-tabs,
+  .no-print {
+    display: none !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    /* layout.css sets min-height:100vh for the on-screen grid layout; left
+       alone here it can waste a blank trailing page on a short report. */
+    min-height: 0 !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+}
