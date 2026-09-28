@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/access";
 import { dateOnlyStringUTC, parseDateOnlyUTC } from "@/lib/schedule";
 
 // Data access for the whole app, backed directly by Postgres via Prisma.
@@ -205,7 +205,7 @@ export interface Schedule {
 // ---- helpers --------------------------------------------------------------
 
 async function actor(): Promise<string> {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) throw new Error("You must be signed in.");
   return session.user.id;
 }
