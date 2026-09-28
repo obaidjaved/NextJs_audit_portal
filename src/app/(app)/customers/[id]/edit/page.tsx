@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { customers } from "@/lib/wp/repo";
+import { customers } from "@/lib/repo";
 import { CustomerForm } from "@/components/customers/CustomerForm";
 
 export default async function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { audits } from "@/lib/wp/repo";
+import { audits } from "@/lib/repo";
 import { AuditReport } from "@/components/audits/AuditReport";
 import { PrintButton } from "@/components/audits/PrintButton";
 

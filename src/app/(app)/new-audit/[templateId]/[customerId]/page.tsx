@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { templates, customers } from "@/lib/wp/repo";
+import { templates, customers } from "@/lib/repo";
 import { AuditForm } from "@/components/audit-form/AuditForm";
 import type { TemplateField } from "@/lib/field-types";
 

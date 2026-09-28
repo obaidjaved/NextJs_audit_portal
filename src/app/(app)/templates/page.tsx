@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { templates as templatesRepo } from "@/lib/wp/repo";
+import { templates as templatesRepo } from "@/lib/repo";
 
 export default async function TemplatesPage() {
   const templates = (await templatesRepo.list()).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());

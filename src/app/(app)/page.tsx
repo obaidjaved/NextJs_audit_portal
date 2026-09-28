@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { audits as auditsRepo, templates as templatesRepo, customers as customersRepo, actions as actionsRepo } from "@/lib/wp/repo";
+import { audits as auditsRepo, templates as templatesRepo, customers as customersRepo, actions as actionsRepo } from "@/lib/repo";
 import {
   computeHeroMetrics,
   computeWeekCounts,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { actions as actionsRepo, customers as customersRepo, users as usersRepo } from "@/lib/wp/repo";
+import { actions as actionsRepo, customers as customersRepo, users as usersRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 import { dateOnlyStringUTC } from "@/lib/schedule";
 import { ActionRow, type ActionRowData } from "@/components/actions/ActionRow";

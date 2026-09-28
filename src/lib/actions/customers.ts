@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/access";
-import { customers } from "@/lib/wp/repo";
-import { WpError } from "@/lib/wp/client";
+import { customers, RepoError } from "@/lib/repo";
 import { customerSchema } from "@/lib/validation/customer";
 import { parseOrThrow } from "@/lib/validation/parse";
 
@@ -28,7 +27,7 @@ export async function deleteCustomer(id: string) {
   try {
     await customers.remove(id);
   } catch (err) {
-    if (err instanceof WpError && err.status === 409) {
+    if (err instanceof RepoError && err.status === 409) {
       throw new Error("Can't delete — this customer has audits or schedules using it.");
     }
     throw err;

@@ -1,129 +1,91 @@
-# TAP Ops Console: setup guide (headless WordPress + Next.js)
+# TAP Ops Console: deploy to Vercel (plain Next.js, no WordPress)
 
-## How it fits together
+This is a self-contained Next.js app. It stores its own data in Postgres and needs no WordPress site.
+(A separate headless-WordPress version of this backend exists in `wordpress/tap-ops/` if you ever want it —
+the app currently does **not** use it.)
 
-```
-Browser ──> Next.js app (Vercel)  ──server-to-server, secret key──>  WordPress + tap-ops plugin (your host)
-            UI, business logic                                        database, users/roles, REST API
-                                                                      Gravity Form intake -> New Customers
-```
+## What you need
+- A Vercel account.
+- A Postgres database reachable from Vercel: **Vercel Postgres** (powered by Neon) is the easiest — created
+  right inside your Vercel project, no separate account. Any other managed Postgres (Neon, Supabase, RDS) works too.
+- Git repository (GitHub/GitLab/Bitbucket) for the `ops-console` folder.
 
-- **WordPress** stores all data (custom `tap_*` tables in your WP database) and owns the user accounts.
-- **Next.js** is the console people use. It never touches the database; it calls the plugin's REST API from the server
-  with a shared secret (`TAP_API_KEY`). The key never reaches the browser.
-- Staff sign in on the Next.js login page with their **WordPress** email and password.
-- The existing **Gravity Form** on tapsvs.com creates a pending request; an admin approves it under **New Customers**.
+## 1. Push the code
+Push the contents of `ops-console/` to a new Git repository.
 
-You need: a WordPress site (6.0+, PHP 7.4+, HTTPS) with admin access, a Vercel account (or any Node 20+ host),
-and Gravity Forms (already on tapsvs.com).
+## 2. Create the project on Vercel
+1. Vercel dashboard → **Add New → Project** → import the repository. Framework preset: **Next.js**. Root directory: the folder containing `package.json` (if the repo root *is* `ops-console`, leave it default).
+2. Don't deploy yet — add the database first (next step), or deploy once and redeploy after adding env vars.
 
----
+## 3. Add a Postgres database
+**Vercel Postgres (recommended):**
+1. In the project, **Storage → Create Database → Postgres**.
+2. Connect it to the project. Vercel adds `POSTGRES_PRISMA_URL`, `POSTGRES_URL`, etc. automatically.
+3. Add one more environment variable yourself: **`DATABASE_URL`** = the same value as `POSTGRES_PRISMA_URL` shown in the Storage tab (Prisma reads `DATABASE_URL` specifically).
 
-## Part 1: WordPress
+**Any other Postgres provider:** just set `DATABASE_URL` to its connection string (`postgres://user:pass@host:5432/db?sslmode=require`).
 
-### 1. Install the plugin
-1. Zip the folder `wordpress/tap-ops` (the folder itself must be the zip root: `tap-ops/tap-ops.php`).
-2. WordPress admin, **Plugins > Add New > Upload Plugin**, upload the zip, **Activate**.
-   Activation creates the tables and two roles: **TAP Admin** and **TAP Inspector**.
-
-### 2. Add the secret key
-Generate a long random key (for example `openssl rand -base64 48`) and add to `wp-config.php`,
-above the line `/* That's all, stop editing! */`:
-
-```php
-define( 'TAP_API_KEY', 'PASTE-YOUR-LONG-RANDOM-KEY-HERE' );
-define( 'TAP_QUOTE_FORM_ID', 3 );   // the numeric ID of your Request a Quote Gravity Form (Forms > hover the form)
-```
-Do **not** define `TAP_ALLOW_DEV_SEED` in production (it is for demo data only).
-Without `TAP_API_KEY` every endpoint returns 503 by design.
-
-### 3. Create the people
-**Users > Add New**, then set the role:
-- **TAP Admin** for you: full access, approvals, team management, approving new customers.
-- **TAP Inspector** for auditors: run audits, manage actions, view customers.
-Existing WordPress Administrators also count as admins. Users need no other WordPress permissions; they only use the console.
-
-### 4. Check the API works
-Open `https://YOUR-SITE/wp-json/tap/v1/customers` in a browser. You should see
-`{"code":"bad_key", ...}` (401). That means the plugin is live and locked. (503 means the key constant is missing.)
-
-### 5. Things that can block the API
-- Plugins that disable or restrict the REST API (security/"Disable REST API" plugins): allow `/wp-json/tap/v1/*`.
-- Caching plugins/CDN: exclude `/wp-json/tap/*` from caching.
-- Web application firewalls (Wordfence, Cloudflare): the API is called from Vercel servers; whitelist if blocked.
-- The site must be served over HTTPS; the key is sent in a header.
-
-### 6. Gravity Forms: new customers
-Nothing to configure if your form's title contains "Quote" or you set `TAP_QUOTE_FORM_ID`.
-On every submission the plugin creates a **pending request**. Fields are matched by **label** (First Name, Last Name,
-Company Name, Title, Street Address, Address Line 2, City, State, ZIP, Phone, Email, Date Needed, Additional Info; a
-Name field and an Address field are also understood; checkbox choices become Services, or Training when the field label
-contains "training"). **Keep those labels** if you edit the form. **Test once with a real submission** (see Part 4).
-
----
-
-## Part 2: Next.js app
-
-### Environment variables
-Copy `.env.example` to `.env` (local) or add these in Vercel **Project > Settings > Environment Variables**:
+## 4. Environment variables
+Project → **Settings → Environment Variables**:
 
 | Variable | Value |
 |---|---|
-| `WP_API_URL` | `https://YOUR-SITE/wp-json/tap/v1` (no trailing slash) |
-| `WP_API_KEY` | exactly the same value as `TAP_API_KEY` |
-| `AUTH_SECRET` | random string (`npx auth secret`) |
-| `NEXTAUTH_URL` | the console's public URL, e.g. `https://portal.tapsvs.com` |
-| `AUTH_TRUST_HOST` | `true` (only if not on Vercel) |
-| `BLOB_READ_WRITE_TOKEN` | optional: enables photo uploads on Vercel (Storage > Blob) |
+| `DATABASE_URL` | your Postgres connection string (see above) |
+| `AUTH_SECRET` | random string — generate with `npx auth secret` |
+| `NEXTAUTH_URL` | your production URL, e.g. `https://portal.tapsvs.com` (Vercel also sets `VERCEL_URL` automatically, which Auth.js trusts) |
+| `BLOB_READ_WRITE_TOKEN` | optional, for photo uploads: **Storage → Create Database → Blob**, then copy its token here |
 
-### Run locally
+## 5. Run migrations and create the first admin
+Migrations aren't run automatically on deploy. From your machine, with `DATABASE_URL` pointed at the **production** database:
+
+```bash
+cd ops-console
+npm install
+DATABASE_URL="<production connection string>" npx prisma migrate deploy
+DATABASE_URL="<production connection string>" npx tsx prisma/seed.ts   # creates admin@tapsvs.com / changeme123
+```
+**Change that password immediately** after first login (Team page → Reset password), or edit `prisma/seed.ts` to use your own email/password before running it.
+
+To add more staff later, sign in as admin and use the **Team** page — no database access needed.
+
+## 6. Deploy
+Push to your main branch (or click **Deploy** in Vercel). Vercel builds with `next build` and serves it.
+
+## 7. Point WordPress at it
+On tapsvs.com, add a "Client Portal" or "Ops Console" link/button to your production URL
+(e.g. `https://portal.tapsvs.com`). The two sites are independent — WordPress just links out.
+
+## Using the built-in quote form
+`/request-quote` is a public page built into this app (no Gravity Forms needed). Submissions appear under
+**Customers → New Customers** for an admin to approve or reject. Link tapsvs.com's "Request a Quote" button to
+`https://portal.tapsvs.com/request-quote`, or keep your existing Gravity Form separately — they don't conflict,
+you'd just be reviewing leads in two places.
+
+## Local development
 ```bash
 npm install
-npm run build && npm start        # http://localhost:3000   (use `npm run dev` on a machine with enough memory)
+npx prisma dev -n opsconsole -P 51220 &     # or run: docker run -p 5432:5432 postgres, etc.
+echo 'DATABASE_URL="postgres://postgres:postgres@localhost:51220/template1?sslmode=disable"' >> .env
+echo 'AUTH_SECRET="dev-secret"' >> .env
+echo 'NEXTAUTH_URL="http://localhost:3000"' >> .env
+npx prisma migrate dev
+npm run db:seed          # admin@tapsvs.com / changeme123
+npm run db:seed-demo     # optional: sample customers, audits, actions
+npm run dev              # or: npm run build && npm start
 ```
 
-### Deploy to Vercel
-1. Push the `ops-console` folder to a Git repository (GitHub).
-2. Vercel, **Add New > Project**, import the repo, framework: Next.js. Set the environment variables above. Deploy.
-3. Optional custom domain, for example `portal.tapsvs.com` (add the CNAME Vercel shows you). Update `NEXTAUTH_URL`.
-4. In WordPress, add a menu item or button "Client / Ops Portal" that links to the console URL.
-
----
-
-## Part 3: First run
-1. Open the console URL, sign in with the **TAP Admin** WordPress account.
-2. **Templates > New Template** to build your inspection templates.
-3. **Customers**: add customers, or wait for Gravity Form requests under **New Customers**.
-4. **New Audit** to start inspecting. Failed items automatically raise corrective actions.
-
-## Part 4: Acceptance checklist
-- [ ] `/wp-json/tap/v1/customers` returns `bad_key` (401), not 404/503.
-- [ ] Admin can sign in; a deactivated user cannot (Team page > Deactivate).
-- [ ] Submit the real quote form; a request appears under **New Customers**; **Approve** creates the customer with its address, contact, email and phone.
-- [ ] Create an audit with a failed item; an action appears under **Actions**; **Create public link** works in a private window.
-- [ ] Photo upload works (needs `BLOB_READ_WRITE_TOKEN` on Vercel).
-
-## Try everything locally without a real WordPress
-```bash
-cd wordpress/tap-ops
-npx @wp-playground/cli server --port=9400 --auto-mount --blueprint=playground-blueprint.json
-# in another terminal:
-curl -X POST -H "X-TAP-Key: test-key-123" http://127.0.0.1:9400/wp-json/tap/v1/dev/seed
-```
-Set `WP_API_URL=http://127.0.0.1:9400/wp-json/tap/v1` and `WP_API_KEY=test-key-123`, then sign in as
-`admin@tapsvs.com` / `changeme123`. (Playground data is temporary.)
+## Acceptance checklist
+- [ ] Sign in as the seeded admin, then change the password.
+- [ ] Create a template, a customer, and run one audit end to end.
+- [ ] Fail one item on the audit; confirm an action appears under **Actions**.
+- [ ] Submit `/request-quote` (in a private window, signed out) and approve it from **Customers → New Customers**.
+- [ ] Create a public share link on a finished audit and open it signed out.
+- [ ] Photo upload works (needs `BLOB_READ_WRITE_TOKEN`, else photos save to a `public/uploads` folder that doesn't persist on Vercel — set the token before relying on this in production).
 
 ## Troubleshooting
 | Symptom | Cause |
 |---|---|
-| "Could not reach the WordPress backend" | wrong `WP_API_URL`, site down, or firewall blocking the host |
-| Everything returns 401 `bad_key` | `WP_API_KEY` differs from `TAP_API_KEY` (check for stray spaces/quotes) |
-| 503 `not_configured` | `TAP_API_KEY` missing from wp-config.php |
-| Login always fails | user has neither TAP role nor Administrator, or is deactivated |
-| Quote requests never show up | form title lacks "Quote" and `TAP_QUOTE_FORM_ID` isn't set; or labels were renamed |
-| REST returns HTML / 404 | permalinks set to "Plain": use Settings > Permalinks > Post name |
-
-## Known limits
-- Verified on WordPress Playground (SQLite). **Not yet verified on real MySQL/MariaDB or with real Gravity Forms**; run the checklist above once on staging first.
-- Photos are stored in Vercel Blob (or `public/uploads` locally), not the WordPress media library.
-- WordPress admin (`/wp-admin`) still exists for your own account; staff never need it.
+| Build fails on `prisma generate` | `DATABASE_URL` missing at build time — Vercel needs it set as an env var, not just used locally |
+| Login always fails | migrations/seed not run against the production database, or wrong `DATABASE_URL` |
+| "Prisma Client could not connect" | Postgres provider requires `sslmode=require` in the connection string, or Vercel's IPs aren't allow-listed (rare with managed providers) |
+| Photos don't persist | no `BLOB_READ_WRITE_TOKEN` set — Vercel's filesystem is ephemeral |

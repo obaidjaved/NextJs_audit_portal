@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { templates } from "@/lib/wp/repo";
+import { templates } from "@/lib/repo";
 import { TemplateBuilder, type TemplateFormState } from "@/components/template-builder/TemplateBuilder";
 import type { TemplateField } from "@/lib/field-types";
 

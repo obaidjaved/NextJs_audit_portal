@@ -1,4 +1,4 @@
-import { templates as templatesRepo, customers as customersRepo } from "@/lib/wp/repo";
+import { templates as templatesRepo, customers as customersRepo } from "@/lib/repo";
 import { ScheduleForm } from "@/components/schedules/ScheduleForm";
 
 export default async function NewSchedulePage() {

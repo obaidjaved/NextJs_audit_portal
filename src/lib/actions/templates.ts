@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/access";
-import { templates } from "@/lib/wp/repo";
-import { WpError } from "@/lib/wp/client";
+import { templates, RepoError } from "@/lib/repo";
 import { templateSchema } from "@/lib/validation/template";
 import { parseOrThrow } from "@/lib/validation/parse";
 
@@ -35,7 +34,7 @@ export async function deleteTemplate(id: string) {
     await templates.remove(id);
   } catch (err) {
     // The backend refuses (409) while audits or schedules still reference this template.
-    if (err instanceof WpError && err.status === 409) {
+    if (err instanceof RepoError && err.status === 409) {
       throw new Error("Can't delete — this template has audits or schedules using it.");
     }
     throw err;

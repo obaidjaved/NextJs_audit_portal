@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { customers as customersRepo, audits as auditsRepo, actions as actionsRepo, schedules as schedulesRepo, requests as requestsRepo } from "@/lib/wp/repo";
+import { customers as customersRepo, audits as auditsRepo, actions as actionsRepo, schedules as schedulesRepo, requests as requestsRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 import { CustomerSplitView } from "@/components/customers/CustomerSplitView";
 import { RequestsPanel, type RequestRow } from "@/components/customers/RequestsPanel";

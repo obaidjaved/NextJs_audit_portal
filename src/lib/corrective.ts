@@ -1,5 +1,5 @@
 import type { ResponseObject } from "@/lib/scoring";
-import { actions, audits } from "@/lib/wp/repo";
+import { actions, audits } from "@/lib/repo";
 import { findingsNeedingAction } from "./corrective-pure";
 
 const DUE_DAYS: Record<string, number> = { CRITICAL: 7, HIGH: 14, MEDIUM: 30, LOW: 60 };

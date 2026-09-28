@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/access";
-import { schedules } from "@/lib/wp/repo";
+import { schedules } from "@/lib/repo";
 import { scheduleSchema } from "@/lib/validation/schedule";
 import { parseOrThrow } from "@/lib/validation/parse";
 

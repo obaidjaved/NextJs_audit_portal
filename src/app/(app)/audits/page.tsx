@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { audits as auditsRepo } from "@/lib/wp/repo";
+import { audits as auditsRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 import { auditStatus, type AuditStatus } from "@/lib/scoring";
 import { AuditsFilterBar } from "@/components/audits/AuditsFilterBar";

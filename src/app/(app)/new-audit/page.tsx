@@ -1,4 +1,4 @@
-import { templates as templatesRepo, customers as customersRepo } from "@/lib/wp/repo";
+import { templates as templatesRepo, customers as customersRepo } from "@/lib/repo";
 import { NewAuditPicker } from "@/components/audit-form/NewAuditPicker";
 
 export default async function NewAuditPage({

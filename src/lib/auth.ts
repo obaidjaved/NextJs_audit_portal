@@ -1,32 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { wp, WpError } from "./wp/client";
-
-type WpUser = { id: string; name: string; email: string; role: "ADMIN" | "INSPECTOR"; active?: boolean };
-
-// Session re-validation asks WordPress on each request so a deactivation or role
-// change takes effect immediately; a short cache keeps that from hammering WP.
-const RECHECK_TTL_MS = 20_000;
-const recheckCache = new Map<string, { at: number; user: WpUser | null }>();
-
-async function currentWpUser(id: string): Promise<WpUser | null | "unknown"> {
-  const hit = recheckCache.get(id);
-  if (hit && Date.now() - hit.at < RECHECK_TTL_MS) return hit.user;
-  try {
-    const user = await wp<WpUser>(`/users/${id}`, { userId: id });
-    const result = user.active === false ? null : user;
-    recheckCache.set(id, { at: Date.now(), user: result });
-    return result;
-  } catch (err) {
-    // Unknown/forbidden user -> session is no longer valid. Any other failure
-    // (WordPress unreachable) must not sign everyone out.
-    if (err instanceof WpError && (err.status === 403 || err.status === 404)) {
-      recheckCache.set(id, { at: Date.now(), user: null });
-      return null;
-    }
-    return "unknown";
-  }
-}
+import bcrypt from "bcryptjs";
+import { prisma } from "./db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -42,13 +17,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = credentials?.password as string | undefined;
         if (!email || !password) return null;
 
-        try {
-          const user = await wp<WpUser>("/auth/login", { method: "POST", body: { email, password } });
-          return { id: user.id, name: user.name, email: user.email, role: user.role };
-        } catch (err) {
-          if (err instanceof WpError && (err.status === 401 || err.status === 429)) return null;
-          throw err;
-        }
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !user.active) return null;
+
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        if (!valid) return null;
+
+        return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
   ],
@@ -59,10 +34,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role;
         return token;
       }
+      // Re-check on every request so deactivating a user or changing their
+      // role takes effect immediately instead of at token expiry.
       if (token.id) {
-        const fresh = await currentWpUser(token.id);
-        if (fresh === null) return null;
-        if (fresh !== "unknown") token.role = fresh.role;
+        const fresh = await prisma.user.findUnique({ where: { id: token.id }, select: { active: true, role: true } });
+        if (!fresh || !fresh.active) return null;
+        token.role = fresh.role;
       }
       return token;
     },

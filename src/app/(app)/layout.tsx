@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { auth } from "@/lib/auth";
-import { requests } from "@/lib/wp/repo";
+import { requests } from "@/lib/repo";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { BottomTabBar } from "@/components/shell/BottomTabBar";

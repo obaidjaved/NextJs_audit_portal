@@ -1,4 +1,4 @@
-import { users as usersRepo } from "@/lib/wp/repo";
+import { users as usersRepo } from "@/lib/repo";
 import { requireAdminPage } from "@/lib/access";
 import { TeamManager } from "@/components/team/TeamManager";
 

@@ -2,19 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/access";
-import { users } from "@/lib/wp/repo";
-import { WpError } from "@/lib/wp/client";
+import { users, RepoError } from "@/lib/repo";
 import { createUserSchema } from "@/lib/validation/user";
 import { parseOrThrow } from "@/lib/validation/parse";
 
-// Accounts live in WordPress; WordPress enforces uniqueness and self-protection too.
 export async function createUser(input: unknown) {
   await requireAdmin();
   const data = parseOrThrow(createUserSchema, input);
   try {
     await users.create(data);
   } catch (err) {
-    if (err instanceof WpError && err.status === 409) throw new Error("A user with that email already exists.");
+    if (err instanceof RepoError && err.status === 409) throw new Error("A user with that email already exists.");
     throw err;
   }
   revalidatePath("/team");

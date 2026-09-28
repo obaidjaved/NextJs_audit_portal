@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { schedules as schedulesRepo } from "@/lib/wp/repo";
+import { schedules as schedulesRepo } from "@/lib/repo";
 import { SchedulesView } from "@/components/schedules/SchedulesView";
 
 export default async function SchedulesPage() {

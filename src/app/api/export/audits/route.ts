@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { audits as auditsRepo, actions as actionsRepo } from "@/lib/wp/repo";
+import { audits as auditsRepo, actions as actionsRepo } from "@/lib/repo";
 import { auth } from "@/lib/auth";
 import { auditStatus } from "@/lib/scoring";
 

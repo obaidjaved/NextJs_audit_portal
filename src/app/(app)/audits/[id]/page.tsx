@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/access";
-import { audits, actions, users } from "@/lib/wp/repo";
+import { audits, actions, users } from "@/lib/repo";
 import { AuditReport } from "@/components/audits/AuditReport";
 import { AuditActionsBar } from "@/components/audits/AuditActionsBar";
 import { SharePanel } from "@/components/audits/SharePanel";

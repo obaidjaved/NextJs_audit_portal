@@ -1,4 +1,4 @@
-import { audits, type Category } from "@/lib/wp/repo";
+import { audits, type Category } from "@/lib/repo";
 
 const PREFIX: Record<Category, string> = {
   ELECTRICAL: "EL",

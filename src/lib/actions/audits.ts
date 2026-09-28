@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { audits, templates, type Audit } from "@/lib/wp/repo";
-import { WpError } from "@/lib/wp/client";
+import { audits, templates, type Audit, RepoError } from "@/lib/repo";
 import { auditInputSchema } from "@/lib/validation/audit";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/scoring";
@@ -51,7 +50,7 @@ export async function saveAudit(input: unknown) {
         signature: data.signature,
       });
     } catch (err) {
-      if (!(err instanceof WpError && err.code === "duplicate_doc_number")) throw err;
+      if (!(err instanceof RepoError && err.code === "duplicate_doc_number")) throw err;
     }
   }
   if (!audit) throw new Error("Could not allocate a document number. Please try again.");
@@ -129,7 +128,7 @@ export async function duplicateAudit(id: string) {
         signature: null,
       });
     } catch (err) {
-      if (!(err instanceof WpError && err.code === "duplicate_doc_number")) throw err;
+      if (!(err instanceof RepoError && err.code === "duplicate_doc_number")) throw err;
     }
   }
   if (!copy) throw new Error("Could not allocate a document number. Please try again.");

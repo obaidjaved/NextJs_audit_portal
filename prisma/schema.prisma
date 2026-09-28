@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  INSPECTOR
+}
+
+enum TemplateCategory {
+  ELECTRICAL
+  PLUMBING
+  HVAC
+  SAFETY
+  GENERAL
+}
+
+enum ReportStyle {
+  MODERN
+  CLASSIC
+}
+
+enum ScheduleFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+enum ActionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(INSPECTOR)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditsInspected  Audit[]            @relation("AuditInspector")
+  assignedActions  CorrectiveAction[] @relation("ActionAssignee")
+  createdActions   CorrectiveAction[] @relation("ActionCreator")
+  events           AuditEvent[]
+  reviewedRequests CustomerRequest[]  @relation("RequestReviewer")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  site      String?
+  city      String?
+  state     String?
+  zip       String?
+  contact   String?
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  audits    Audit[]
+  schedules Schedule[]
+  actions   CorrectiveAction[]
+  request   CustomerRequest?
+
+  @@index([name])
+}
+
+model Template {
+  id                String           @id @default(cuid())
+  name              String
+  category          TemplateCategory
+  fields            Json // TemplateField[] — validated by lib/validation/template.ts
+  approvalRequired  Boolean          @default(false)
+  reportStyle       ReportStyle      @default(MODERN)
+  reportAccentColor String?
+  reportLogo        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  audits    Audit[]
+  schedules Schedule[]
+
+  @@index([category])
+}
+
+model Audit {
+  id          String   @id @default(cuid())
+  docNumber   String   @unique
+  templateId  String
+  template    Template @relation(fields: [templateId], references: [id])
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  inspectorId String?
+  inspector   User?    @relation("AuditInspector", fields: [inspectorId], references: [id])
+
+  title           String
+  score           Int?
+  criticalFail    Boolean  @default(false)
+  draft           Boolean  @default(true)
+  pendingApproval Boolean  @default(false)
+  date            DateTime @default(now())
+  responses       Json     @default("[]")
+  notes           String   @default("")
+  photos          Json     @default("[]")
+  signature       String?
+  // Random token enabling a public read-only report link; null = not shared.
+  shareToken      String?  @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actions CorrectiveAction[]
+  events  AuditEvent[]
+
+  @@index([customerId])
+  @@index([templateId])
+  @@index([draft])
+  @@index([pendingApproval])
+}
+
+model Schedule {
+  id         String            @id @default(cuid())
+  title      String
+  templateId String
+  template   Template          @relation(fields: [templateId], references: [id])
+  customerId String
+  customer   Customer          @relation(fields: [customerId], references: [id])
+  frequency  ScheduleFrequency
+  startDate  DateTime
+  active     Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([templateId])
+  @@index([active])
+}
+
+// Race-safe per-category counter feeding docNumber generation (e.g. "EL-0417")
+model DocSequence {
+  category TemplateCategory @id
+  lastSeq  Int              @default(0)
+}
+
+// Corrective action raised from an inspection finding (or manually), tracked to closure.
+model CorrectiveAction {
+  id           String         @id @default(cuid())
+  title        String
+  description  String         @default("")
+  priority     ActionPriority @default(MEDIUM)
+  status       ActionStatus   @default(OPEN)
+  dueDate      DateTime?
+  findingLabel String?
+  auditId      String?
+  audit        Audit?         @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  customerId   String
+  customer     Customer       @relation(fields: [customerId], references: [id])
+  assigneeId   String?
+  assignee     User?          @relation("ActionAssignee", fields: [assigneeId], references: [id])
+  createdById  String?
+  createdBy    User?          @relation("ActionCreator", fields: [createdById], references: [id])
+  resolvedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([customerId])
+  @@index([auditId])
+  @@index([status])
+}
+
+// Append-only activity trail shown on each inspection.
+model AuditEvent {
+  id        String   @id @default(cuid())
+  auditId   String
+  audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([auditId])
+}
+
+// Onboarding / quote request submitted from the public form. Becomes a Customer only when an admin approves it.
+model CustomerRequest {
+  id             String        @id @default(cuid())
+  firstName      String
+  lastName       String
+  companyName    String
+  title          String?
+  street         String
+  street2        String?
+  city           String
+  state          String
+  zip            String
+  phone          String
+  email          String
+  services       Json          @default("[]")
+  trainings      Json          @default("[]")
+  dateNeeded     DateTime
+  additionalInfo String        @default("")
+  status         RequestStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     User?         @relation("RequestReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewNote     String?
+  customerId     String?       @unique
+  customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+
+  @@index([status])
+}

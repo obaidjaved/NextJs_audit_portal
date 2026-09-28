@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { templates } from "@/lib/wp/repo";
+import { templates } from "@/lib/repo";
 import { FIELD_TYPE_MAP, type TemplateField } from "@/lib/field-types";
 import { FieldTypeIcon } from "@/components/template-builder/FieldTypeIcon";
 

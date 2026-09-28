@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/access";
-import { actions as actionsRepo, audits } from "@/lib/wp/repo";
+import { actions as actionsRepo, audits } from "@/lib/repo";
 import { correctiveActionSchema } from "@/lib/validation/corrective";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { logEvent } from "@/lib/corrective";

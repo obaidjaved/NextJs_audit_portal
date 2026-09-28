@@ -1,4 +1,4 @@
-import { audits as auditsRepo, actions as actionsRepo, customers as customersRepo } from "@/lib/wp/repo";
+import { audits as auditsRepo, actions as actionsRepo, customers as customersRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 import { computeAnalytics, type GroupStat } from "@/lib/analytics";
 import { dateOnlyStringUTC } from "@/lib/schedule";
