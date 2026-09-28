@@ -36,10 +36,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       // Re-check on every request so deactivating a user or changing their
       // role takes effect immediately instead of at token expiry.
+      //
+      // Returning null here makes Auth.js delete the session cookie, so a
+      // lookup we *know* failed must not be treated as a revoked user — that
+      // is what logged people out whenever the connection pool ran dry.
       if (token.id) {
-        const fresh = await prisma.user.findUnique({ where: { id: token.id }, select: { active: true, role: true } });
-        if (!fresh || !fresh.active) return null;
-        token.role = fresh.role;
+        try {
+          const fresh = await prisma.user.findUnique({ where: { id: token.id }, select: { active: true, role: true } });
+          if (!fresh || !fresh.active) return null;
+          token.role = fresh.role;
+        } catch (err) {
+          console.error("[auth] user revalidation failed; keeping session", err);
+        }
       }
       return token;
     },

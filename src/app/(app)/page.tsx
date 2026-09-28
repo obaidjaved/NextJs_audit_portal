@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { audits as auditsRepo, templates as templatesRepo, customers as customersRepo, actions as actionsRepo } from "@/lib/repo";
 import {
   computeHeroMetrics,
@@ -20,9 +19,8 @@ import { requireUser } from "@/lib/access";
 import { dateOnlyStringUTC } from "@/lib/schedule";
 
 export default async function ConsolePage() {
-  await requireUser();
-  const session = await auth();
-  const userName = session?.user?.name ?? session?.user?.email ?? "there";
+  const user = await requireUser();
+  const userName = user.name ?? user.email ?? "there";
 
   const [auditRows, templateRows, customerRows, allActions] = await Promise.all([
     auditsRepo.list({ noResponses: true }),
