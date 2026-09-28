@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getSession } from "@/lib/access";
+import { requireUser } from "@/lib/access";
 import { requests } from "@/lib/repo";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
@@ -8,12 +8,15 @@ import { SignOutButton } from "@/components/shell/SignOutButton";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Two independent queries: run them together instead of one after the other.
-  const [session, pendingRequests] = await Promise.all([
-    getSession(),
+  // requireUser() shares the memoized auth() call with the rest of the render,
+  // so guarding every route in this group here costs no extra query. Several
+  // routes under (app) previously relied on the proxy alone for auth.
+  const [user, pendingRequests] = await Promise.all([
+    requireUser(),
     requests.pendingCount().catch(() => 0),
   ]);
-  const userName = session?.user?.name ?? session?.user?.email ?? "Signed in";
-  const role = session?.user?.role ?? "INSPECTOR";
+  const userName = user.name ?? user.email ?? "Signed in";
+  const role = user.role;
 
   return (
     <div className="app-shell">
