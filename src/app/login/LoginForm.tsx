@@ -13,9 +13,12 @@ export function LoginForm() {
     <form action={formAction} className="login-form">
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
-      <label className="login-field">
-        <span>Email</span>
-        <input className="input" name="email" type="email" autoComplete="username" required />
+          <label className="login-field">
+        <span>Email or username</span>
+        {/* type="text", not "email": the WordPress backend accepts a
+            username too, and a native type="email" input's browser-level
+            validation would silently block that before the form ever submits. */}
+        <input className="input" name="email" type="text" autoComplete="username" required />
       </label>
 
       <label className="login-field">
