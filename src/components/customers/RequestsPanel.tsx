@@ -127,14 +127,16 @@ function RequestCard({ r, canReview }: { r: RequestRow; canReview: boolean }) {
             </div>
           </div>
 
-          <div>
-            <div style={LABEL}>Training requested</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {r.trainings.map((t) => (
-                <span key={t} className="pill pending" style={{ textTransform: "none", letterSpacing: 0 }}>{t}</span>
-              ))}
+          {r.trainings.length > 0 && (
+            <div>
+              <div style={LABEL}>Training requested</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {r.trainings.map((t) => (
+                  <span key={t} className="pill pending" style={{ textTransform: "none", letterSpacing: 0 }}>{t}</span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {r.additionalInfo && (
             <div>

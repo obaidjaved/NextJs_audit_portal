@@ -22,7 +22,9 @@ export const quoteRequestSchema = z.object({
     .regex(/^[+\d()\-.\s]{7,}$/, "Enter a valid phone number"),
   email: z.string().trim().toLowerCase().email("Enter a valid email address").max(200),
   services: z.array(z.enum(ALL_SERVICES as [string, ...string[]])).min(1, "Choose at least one type of service"),
-  trainings: z.array(z.enum(TRAINING_OPTIONS as [string, ...string[]])).min(1, "Choose at least one type of training (or N/A)"),
+  // Not collected by the public form anymore; kept (optional) so older
+  // requests, and any client that still sends it, keep validating.
+  trainings: z.array(z.enum(TRAINING_OPTIONS as [string, ...string[]])).default([]),
   dateNeeded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose the date you need service by"),
   additionalInfo: optional(4000),
 });

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { submitQuoteRequest } from "@/lib/actions/quote-requests";
-import { SERVICE_GROUPS, TRAINING_OPTIONS, US_STATES } from "@/lib/quote-options";
+import { SERVICE_GROUPS, US_STATES } from "@/lib/quote-options";
 
 const LABEL = { display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)" } as const;
 const SECTION = { fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 800, margin: "0 0 14px" } as const;
@@ -43,7 +43,6 @@ export function QuoteForm() {
   const [done, setDone] = useState(false);
   const [f, setF] = useState(EMPTY);
   const [services, setServices] = useState<string[]>([]);
-  const [trainings, setTrainings] = useState<string[]>([]);
 
   const set = (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setF((s) => ({ ...s, [key]: e.target.value }));
@@ -55,10 +54,9 @@ export function QuoteForm() {
     e.preventDefault();
     setError(null);
     if (services.length === 0) return setError("Choose at least one type of service.");
-    if (trainings.length === 0) return setError("Choose at least one type of training, or N/A.");
     startTransition(async () => {
       try {
-        await submitQuoteRequest({ ...f, services, trainings });
+        await submitQuoteRequest({ ...f, services });
         setDone(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (err) {
@@ -167,20 +165,6 @@ export function QuoteForm() {
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset style={{ border: "none", padding: 0, margin: "0 0 22px" }}>
-          <legend style={{ ...LABEL, marginBottom: 10 }}>
-            Type of Training <span style={{ color: "var(--danger)" }}>*</span> <span style={{ fontWeight: 500 }}>(choose as many as apply)</span>
-          </legend>
-          <div className="card-soft" style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 8 }}>
-            {TRAINING_OPTIONS.map((o) => (
-              <label key={o} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13.5, cursor: "pointer" }}>
-                <input type="checkbox" checked={trainings.includes(o)} onChange={() => toggle(trainings, setTrainings, o)} style={{ marginTop: 3 }} />
-                {o}
-              </label>
             ))}
           </div>
         </fieldset>
