@@ -1,10 +1,19 @@
+/* Pinned to the viewport: it never scrolls with the page, and the user block
+   always sits at the bottom of the screen. */
 .sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 24px 18px;
   border-right: 1px solid var(--rule);
   background: var(--card-soft);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sidebar-brand {
@@ -287,4 +296,26 @@ body[data-theme="dark"] .theme-pill .thumb {
 .offline-banner[data-status="online"] {
   background: var(--ok-soft);
   color: var(--ok);
+}
+
+/* Short windows: tighten spacing so the whole sidebar still fits without scrolling. */
+@media (max-height: 760px) {
+  .sidebar {
+    padding: 14px;
+    gap: 4px;
+  }
+
+  .sidebar-brand {
+    padding-bottom: 10px;
+  }
+
+  .sidebar-nav a {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .sidebar-foot {
+    gap: 8px;
+    padding-top: 10px;
+  }
 }
