@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/access";
+import { requireAdmin, requireStaff } from "@/lib/access";
 import { requests, RepoError } from "@/lib/repo";
 import { quoteRequestSchema } from "@/lib/validation/quote-request";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -37,7 +37,17 @@ export async function submitQuoteRequest(input: unknown): Promise<{ ok: true }> 
 
   const data = parseOrThrow(quoteRequestSchema, raw);
   await requests.create(data);
-  revalidatePath("/customers");
+  revalidatePath("/leads");
+  return { ok: true };
+}
+
+// Staff: add a lead by hand (phone call, email, trade show). Same record and
+// same validation as a public-form submission, so it lands in the same list.
+export async function createLead(input: unknown): Promise<{ ok: true }> {
+  await requireStaff();
+  const data = parseOrThrow(quoteRequestSchema, input ?? {});
+  await requests.create(data);
+  revalidatePath("/leads");
   return { ok: true };
 }
 
@@ -52,6 +62,7 @@ export async function approveQuoteRequest(id: string) {
   await requireAdmin();
   try {
     const { customerId } = await requests.approve(id);
+    revalidatePath("/leads");
     revalidatePath("/customers");
     return { customerId };
   } catch (err) {
@@ -66,5 +77,5 @@ export async function rejectQuoteRequest(id: string, note?: string) {
   } catch (err) {
     friendly(err);
   }
-  revalidatePath("/customers");
+  revalidatePath("/leads");
 }

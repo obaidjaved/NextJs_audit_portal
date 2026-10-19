@@ -5,7 +5,7 @@ import { ScheduleList, type ScheduleRow } from "./ScheduleList";
 import { ScheduleCalendarView } from "./ScheduleCalendarView";
 
 export function SchedulesView({ schedules }: { schedules: ScheduleRow[] }) {
-  const [tab, setTab] = useState<"list" | "calendar">("list");
+  const [tab, setTab] = useState<"list" | "calendar">("calendar");
 
   return (
     <div>

@@ -57,7 +57,7 @@ On tapsvs.com, add a "Client Portal" or "Ops Console" link/button to your produc
 
 ## Using the built-in quote form
 `/request-quote` is a public page built into this app (no Gravity Forms needed). Submissions appear under
-**Customers → New Customers** for an admin to approve or reject. Link tapsvs.com's "Request a Quote" button to
+**Leads** for an admin to approve or reject. Link tapsvs.com's "Request a Quote" button to
 `https://portal.tapsvs.com/request-quote`, or keep your existing Gravity Form separately — they don't conflict,
 you'd just be reviewing leads in two places.
 
@@ -78,7 +78,7 @@ npm run dev              # or: npm run build && npm start
 - [ ] Sign in as the seeded admin, then change the password.
 - [ ] Create a template, a customer, and run one audit end to end.
 - [ ] Fail one item on the audit; confirm an action appears under **Actions**.
-- [ ] Submit `/request-quote` (in a private window, signed out) and approve it from **Customers → New Customers**.
+- [ ] Submit `/request-quote` (in a private window, signed out) and approve it from **Leads**.
 - [ ] Create a public share link on a finished audit and open it signed out.
 - [ ] Photo upload works (needs `BLOB_READ_WRITE_TOKEN`, else photos save to a `public/uploads` folder that doesn't persist on Vercel — set the token before relying on this in production).
 

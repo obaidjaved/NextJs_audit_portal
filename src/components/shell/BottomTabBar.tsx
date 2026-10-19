@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { isNavActive, navFor, type Role } from "./NAV_ITEMS";
 import { NavIcons } from "./navIcons";
 
 export function BottomTabBar({ role, pendingRequests }: { role: Role; pendingRequests: number }) {
   const pathname = usePathname();
-  const view = useSearchParams().get("view");
 
   return (
     <nav className="bottom-tabs">
       {navFor(role).map((item) => {
-        const active = isNavActive(item, pathname, view);
+        const active = isNavActive(item, pathname);
         return (
           <Link key={item.href} href={item.href} className="bottom-tab" data-active={active}>
             {NavIcons[item.icon as keyof typeof NavIcons]}

@@ -136,9 +136,6 @@ export function CustomerSplitView({
           </svg>
           <input placeholder="Search customers…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Link href="/customers/new" className="btn ghost sm">
-          + New Customer
-        </Link>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 520, overflowY: "auto" }}>
           {filtered.map((c) => (
             <button

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { isNavActive, navFor, ROLE_LABEL, type Role } from "./NAV_ITEMS";
 import { NavIcons } from "./navIcons";
 import { ThemeToggle } from "./ThemeToggle";
@@ -20,7 +20,6 @@ export function Sidebar({
   signOutSlot: ReactNode;
 }) {
   const pathname = usePathname();
-  const view = useSearchParams().get("view");
 
   return (
     <aside className="sidebar">
@@ -30,7 +29,7 @@ export function Sidebar({
 
       <nav className="sidebar-nav">
         {navFor(role).map((item) => {
-          const active = isNavActive(item, pathname, view);
+          const active = isNavActive(item, pathname);
           return (
             <Link key={item.href} href={item.href} data-active={active}>
               {NavIcons[item.icon as keyof typeof NavIcons]}

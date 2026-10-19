@@ -189,7 +189,7 @@ export function RequestsPanel({ requests, canReview }: { requests: RequestRow[];
         <div style={{ ...LABEL, marginBottom: 10 }}>Awaiting review ({pending.length})</div>
         {pending.length === 0 ? (
           <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
-            No new requests. Submissions from the public quote form appear here for approval.
+            No new leads. Quote-form submissions appear here for approval, and you can add one yourself with “Add lead”.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

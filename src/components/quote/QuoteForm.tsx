@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { submitQuoteRequest } from "@/lib/actions/quote-requests";
+import { useRouter } from "next/navigation";
+import { createLead, submitQuoteRequest } from "@/lib/actions/quote-requests";
 import { SERVICE_GROUPS, US_STATES } from "@/lib/quote-options";
 
 const LABEL = { display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)" } as const;
@@ -37,7 +38,10 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-export function QuoteForm() {
+// `internal` is the staff "Add lead" variant: same fields and validation, saved
+// through createLead, then back to the Leads list instead of a thank-you card.
+export function QuoteForm({ internal = false }: { internal?: boolean }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -56,6 +60,11 @@ export function QuoteForm() {
     if (services.length === 0) return setError("Choose at least one type of service.");
     startTransition(async () => {
       try {
+        if (internal) {
+          await createLead({ ...f, services });
+          router.push("/leads");
+          return;
+        }
         await submitQuoteRequest({ ...f, services });
         setDone(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -80,12 +89,14 @@ export function QuoteForm() {
   return (
     <form onSubmit={submit} className="card" style={{ padding: 28, display: "flex", flexDirection: "column", gap: 28 }}>
       {/* Honeypot: hidden from people, tempting to bots. */}
-      <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, overflow: "hidden" }}>
-        <label>
-          Website
-          <input tabIndex={-1} autoComplete="off" value={f.website} onChange={set("website")} />
-        </label>
-      </div>
+      {!internal && (
+        <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, overflow: "hidden" }}>
+          <label>
+            Website
+            <input tabIndex={-1} autoComplete="off" value={f.website} onChange={set("website")} />
+          </label>
+        </div>
+      )}
 
       <section>
         <h2 style={SECTION}>Contact Information</h2>
@@ -188,7 +199,7 @@ export function QuoteForm() {
       )}
 
       <button type="submit" className="btn primary" disabled={pending} style={{ alignSelf: "flex-start" }}>
-        {pending ? "Submitting…" : "Submit"}
+        {pending ? (internal ? "Saving…" : "Submitting…") : internal ? "Add lead" : "Submit"}
       </button>
     </form>
   );
