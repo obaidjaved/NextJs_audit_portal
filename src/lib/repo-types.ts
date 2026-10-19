@@ -237,7 +237,8 @@ export interface Backend {
   requests: {
     list(): Promise<CustomerRequest[]>;
     pendingCount(): Promise<number>;
-    create(data: RequestInput): Promise<CustomerRequest>;
+    // `manual` = added by staff, so the backend accepts sparser details than the public form.
+    create(data: RequestInput, opts?: { manual?: boolean }): Promise<CustomerRequest>;
     approve(id: string): Promise<{ customerId: string | null }>;
     reject(id: string, note?: string): Promise<void>;
   };

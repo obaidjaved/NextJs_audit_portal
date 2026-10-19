@@ -58,6 +58,7 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
     e.preventDefault();
     setError(null);
     if (services.length === 0) return setError("Choose at least one type of service.");
+    if (internal && !f.phone.trim() && !f.email.trim()) return setError("Enter a phone number or an email address.");
     startTransition(async () => {
       try {
         if (internal) {
@@ -119,25 +120,25 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
       <section>
         <h2 style={SECTION}>Address Information</h2>
         <div style={GRID}>
-          <Field label="Street Address" required>
-            <input className="input" required maxLength={200} autoComplete="address-line1" value={f.street} onChange={set("street")} />
+          <Field label="Street Address" required={!internal}>
+            <input className="input" required={!internal} maxLength={200} autoComplete="address-line1" value={f.street} onChange={set("street")} />
           </Field>
           <Field label="Address Line 2">
             <input className="input" maxLength={200} autoComplete="address-line2" value={f.street2} onChange={set("street2")} />
           </Field>
-          <Field label="City" required>
-            <input className="input" required maxLength={100} autoComplete="address-level2" value={f.city} onChange={set("city")} />
+          <Field label="City" required={!internal}>
+            <input className="input" required={!internal} maxLength={100} autoComplete="address-level2" value={f.city} onChange={set("city")} />
           </Field>
-          <Field label="State" required>
-            <select className="select" required value={f.state} onChange={set("state")}>
+          <Field label="State" required={!internal}>
+            <select className="select" required={!internal} value={f.state} onChange={set("state")}>
               <option value="">Select a state…</option>
               {US_STATES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </Field>
-          <Field label="ZIP Code" required>
-            <input className="input" required inputMode="numeric" pattern="\d{5}(-\d{4})?" title="5-digit ZIP code" autoComplete="postal-code" value={f.zip} onChange={set("zip")} />
+          <Field label="ZIP Code" required={!internal}>
+            <input className="input" required={!internal} inputMode="numeric" pattern="\d{5}(-\d{4})?" title="5-digit ZIP code" autoComplete="postal-code" value={f.zip} onChange={set("zip")} />
           </Field>
         </div>
       </section>
@@ -145,11 +146,11 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
       <section>
         <h2 style={SECTION}>Communication Details</h2>
         <div style={GRID}>
-          <Field label="Phone" required>
-            <input className="input" required type="tel" autoComplete="tel" value={f.phone} onChange={set("phone")} />
+          <Field label={internal ? "Phone (phone or email required)" : "Phone"} required={!internal}>
+            <input className="input" required={!internal} type="tel" autoComplete="tel" value={f.phone} onChange={set("phone")} />
           </Field>
-          <Field label="Email" required>
-            <input className="input" required type="email" autoComplete="email" value={f.email} onChange={set("email")} />
+          <Field label={internal ? "Email (phone or email required)" : "Email"} required={!internal}>
+            <input className="input" required={!internal} type="email" autoComplete="email" value={f.email} onChange={set("email")} />
           </Field>
         </div>
       </section>
@@ -181,8 +182,8 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
         </fieldset>
 
         <div style={{ maxWidth: 260 }}>
-          <Field label="Date Needed" required>
-            <input className="input" required type="date" value={f.dateNeeded} onChange={set("dateNeeded")} />
+          <Field label="Date Needed" required={!internal}>
+            <input className="input" required={!internal} type="date" value={f.dateNeeded} onChange={set("dateNeeded")} />
           </Field>
         </div>
       </section>

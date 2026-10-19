@@ -168,7 +168,8 @@ const requests: Backend["requests"] = {
   list: async () => (await wp<Record<string, unknown>[]>("/requests", { userId: await actor() })).map(requestOf),
   pendingCount: async () => (await wp<{ count: number }>("/requests/pending-count", { userId: await actor() })).count,
   // Public intake: no signed-in user, matching the API contract.
-  create: async (data) => requestOf(await wp<Record<string, unknown>>("/requests", { method: "POST", body: data })),
+  create: async (data, opts) =>
+    requestOf(await wp<Record<string, unknown>>("/requests", { method: "POST", body: opts?.manual ? { ...data, source: "manual" } : data })),
   approve: async (id) => wp<{ customerId: string | null }>(`/requests/${id}/approve`, { method: "POST", userId: await actor() }),
   reject: async (id, note) => {
     await wp(`/requests/${id}/reject`, { method: "POST", body: { note }, userId: await actor() });

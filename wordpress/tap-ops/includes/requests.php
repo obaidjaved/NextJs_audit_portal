@@ -90,24 +90,35 @@ function tap_ops_create_request( array $data, $strict, $default_source = 'api' )
 		'additional_info' => isset( $data['additionalInfo'] ) ? tap_ops_textarea( $data['additionalInfo'], 20000 ) : '',
 	);
 
+	// Leads added by staff (source "manual") only need a name, company and a way
+	// to reach them; the public quote form keeps the full set of required fields.
+	$manual = isset( $data['source'] ) && 'manual' === $data['source'];
+
 	if ( $strict ) {
 		$required = array(
 			'first_name'   => 'firstName',
 			'last_name'    => 'lastName',
 			'company_name' => 'companyName',
-			'street'       => 'street',
-			'city'         => 'city',
-			'state'        => 'state',
-			'zip'          => 'zip',
-			'phone'        => 'phone',
-			'email'        => 'email',
 		);
+		if ( ! $manual ) {
+			$required += array(
+				'street' => 'street',
+				'city'   => 'city',
+				'state'  => 'state',
+				'zip'    => 'zip',
+				'phone'  => 'phone',
+				'email'  => 'email',
+			);
+		}
 		foreach ( $required as $col => $key ) {
 			if ( '' === $row[ $col ] ) {
 				return tap_ops_err( 422, 'validation', "$key is required." );
 			}
 		}
-		if ( ! is_email( $row['email'] ) ) {
+		if ( $manual && '' === $row['phone'] && '' === $row['email'] ) {
+			return tap_ops_err( 422, 'validation', 'phone or email is required.' );
+		}
+		if ( ( ! $manual || '' !== $row['email'] ) && ! is_email( $row['email'] ) ) {
 			return tap_ops_err( 422, 'validation', 'email is not valid.' );
 		}
 	}

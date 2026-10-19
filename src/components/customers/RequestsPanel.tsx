@@ -85,7 +85,7 @@ function RequestCard({ r, canReview }: { r: RequestRow; canReview: boolean }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 14.5 }}>{r.companyName}</div>
           <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
-            {r.firstName} {r.lastName} · {r.city}, {r.state} · received {fmtDate(r.createdAt)}
+            {[`${r.firstName} ${r.lastName}`.trim(), [r.city, r.state].filter(Boolean).join(", "), `received ${fmtDate(r.createdAt)}`].filter(Boolean).join(" · ")}
           </div>
         </div>
         <span className={`pill ${STATUS_PILL[r.status]}`}>{r.status === "PENDING" ? "Awaiting review" : r.status === "APPROVED" ? "Approved" : "Rejected"}</span>
@@ -100,18 +100,20 @@ function RequestCard({ r, canReview }: { r: RequestRow; canReview: boolean }) {
               <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
                 {r.firstName} {r.lastName}
                 {r.title && <div style={{ color: "var(--ink-2)" }}>{r.title}</div>}
-                <div><a href={`mailto:${r.email}`} style={{ textDecoration: "underline" }}>{r.email}</a></div>
-                <div><a href={`tel:${r.phone}`} style={{ textDecoration: "underline" }}>{r.phone}</a></div>
+                {r.email && <div><a href={`mailto:${r.email}`} style={{ textDecoration: "underline" }}>{r.email}</a></div>}
+                {r.phone && <div><a href={`tel:${r.phone}`} style={{ textDecoration: "underline" }}>{r.phone}</a></div>}
               </div>
             </div>
-            <div>
-              <div style={LABEL}>Address</div>
-              <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
-                {r.street}
-                {r.street2 && <div>{r.street2}</div>}
-                <div>{r.city}, {r.state} {r.zip}</div>
+            {(r.street || r.city || r.state || r.zip) && (
+              <div>
+                <div style={LABEL}>Address</div>
+                <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+                  {r.street}
+                  {r.street2 && <div>{r.street2}</div>}
+                  <div>{[[r.city, r.state].filter(Boolean).join(", "), r.zip].filter(Boolean).join(" ")}</div>
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <div style={LABEL}>Date needed</div>
               <div style={{ fontSize: 13.5 }}>{fmtDateOnly(r.dateNeeded)}</div>

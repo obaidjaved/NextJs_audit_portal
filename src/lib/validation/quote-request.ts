@@ -30,3 +30,27 @@ export const quoteRequestSchema = z.object({
 });
 
 export type QuoteRequestInput = z.infer<typeof quoteRequestSchema>;
+
+// Staff-added leads (phone call, email, referral) only need who it is, how to
+// reach them, and what they want. Everything else is optional.
+export const leadSchema = z
+  .object({
+    firstName: required("First name", 80),
+    lastName: required("Last name", 80),
+    companyName: required("Company name", 160),
+    title: optional(120),
+    street: optional(200),
+    street2: optional(200),
+    city: optional(100),
+    state: z.union([z.literal(""), z.enum(US_STATES as [string, ...string[]])]).default(""),
+    zip: z.union([z.literal(""), z.string().trim().regex(/^\d{5}(-\d{4})?$/, "Enter a valid ZIP code")]).default(""),
+    phone: z.string().trim().max(30).default(""),
+    email: z.union([z.literal(""), z.string().trim().toLowerCase().email("Enter a valid email address").max(200)]).default(""),
+    services: z.array(z.enum(ALL_SERVICES as [string, ...string[]])).min(1, "Choose at least one type of service"),
+    trainings: z.array(z.enum(TRAINING_OPTIONS as [string, ...string[]])).default([]),
+    dateNeeded: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date")]).optional(),
+    additionalInfo: optional(4000),
+  })
+  .refine((v) => v.phone !== "" || v.email !== "", { message: "Enter a phone number or an email address", path: ["phone"] })
+  .refine((v) => v.phone === "" || /^[+\d()\-.\s]{7,}$/.test(v.phone), { message: "Enter a valid phone number", path: ["phone"] })
+  .transform((v) => ({ ...v, dateNeeded: v.dateNeeded || new Date().toISOString().slice(0, 10) }));

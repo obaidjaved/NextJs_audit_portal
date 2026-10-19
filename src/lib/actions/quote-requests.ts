@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireStaff } from "@/lib/access";
 import { requests, RepoError } from "@/lib/repo";
-import { quoteRequestSchema } from "@/lib/validation/quote-request";
+import { leadSchema, quoteRequestSchema } from "@/lib/validation/quote-request";
 import { parseOrThrow } from "@/lib/validation/parse";
 
 // Best-effort, per-instance throttle for the public form (5 submissions / hour / IP).
@@ -41,12 +41,12 @@ export async function submitQuoteRequest(input: unknown): Promise<{ ok: true }> 
   return { ok: true };
 }
 
-// Staff: add a lead by hand (phone call, email, trade show). Same record and
-// same validation as a public-form submission, so it lands in the same list.
+// Staff: add a lead by hand (phone call, email, trade show). Same record as a
+// public-form submission, with looser validation (see leadSchema).
 export async function createLead(input: unknown): Promise<{ ok: true }> {
   await requireStaff();
-  const data = parseOrThrow(quoteRequestSchema, input ?? {});
-  await requests.create(data);
+  const data = parseOrThrow(leadSchema, input ?? {});
+  await requests.create(data, { manual: true });
   revalidatePath("/leads");
   return { ok: true };
 }
