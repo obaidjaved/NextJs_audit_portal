@@ -3,7 +3,7 @@ import type { ChoiceOption } from "./field-types";
 export type ResponseObject =
   | { label: string; type: "status"; value: "pass" | "marginal" | "fail" }
   | { label: string; type: "choice"; option: ChoiceOption | null }
-  | { label: string; type: "checkbox"; value: boolean }
+  | { label: string; type: "checkbox"; value: boolean; checked?: string[] }
   | { label: string; type: "photo"; value: string | null; caption: string }
   | { label: string; type: "annotation"; value: string | null; caption: string }
   | { label: string; type: "signature"; value: string | null }
@@ -44,7 +44,8 @@ export function responseHasValue(response: ResponseObject | null): boolean {
     case "choice":
       return response.option !== null;
     case "checkbox":
-      return true;
+      // A checkbox group counts as answered once at least one box is ticked.
+      return response.checked ? response.checked.length > 0 : true;
     case "photo":
     case "annotation":
       return Boolean(response.value);

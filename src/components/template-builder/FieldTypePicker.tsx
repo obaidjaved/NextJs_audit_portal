@@ -56,7 +56,11 @@ export function FieldTypePicker({
   }, [open]);
 
   const current = FIELD_TYPE_MAP[value];
-  const filtered = FIELD_TYPES.filter((f) => f.label.toLowerCase().includes(query.trim().toLowerCase()));
+  // Annotation does the same job as Media, so it's no longer offered for new
+  // fields; templates that already use it keep working.
+  const filtered = FIELD_TYPES.filter(
+    (f) => (f.type !== "annotation" || value === "annotation") && f.label.toLowerCase().includes(query.trim().toLowerCase()),
+  );
 
   return (
     <div ref={rootRef} style={{ position: "relative", flex: "1 1 200px", minWidth: 0 }}>

@@ -2,7 +2,10 @@
 
 import { useRef, useState } from "react";
 import { uploadFile } from "@/lib/upload";
+import { isVideoSrc } from "@/lib/media";
 
+// Media field: one photo or video, plus a text box explaining it. The text
+// box is mandatory once something is attached (checked when the audit is completed).
 export function PhotoField({
   value,
   caption,
@@ -45,14 +48,18 @@ export function PhotoField({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 360 }}>
       {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={value} alt="" style={{ maxWidth: "100%", borderRadius: 14, border: "1px solid var(--rule)" }} />
+        isVideoSrc(value) ? (
+          <video src={value} controls playsInline preload="metadata" style={{ maxWidth: "100%", borderRadius: 14, border: "1px solid var(--rule)", background: "#000" }} />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="" style={{ maxWidth: "100%", borderRadius: 14, border: "1px solid var(--rule)" }} />
+        )
       ) : null}
 
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/mp4,video/quicktime,video/webm"
         disabled={disabled || uploading}
         style={{ display: "none" }}
         onChange={(e) => {
@@ -68,7 +75,7 @@ export function PhotoField({
           disabled={disabled || uploading}
           onClick={() => inputRef.current?.click()}
         >
-          {uploading ? "Uploading…" : value ? "Replace photo" : "Add photo"}
+          {uploading ? "Uploading…" : value ? "Replace" : "Add photo or video"}
         </button>
         {value && !disabled ? (
           <button type="button" className="btn ghost sm" onClick={handleRemove}>
@@ -77,11 +84,14 @@ export function PhotoField({
         ) : null}
       </div>
 
-      {error && <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{error}</p>}
+      {error && <p role="alert" style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{error}</p>}
 
-      <input
-        className="input"
-        placeholder="Caption — explain what this photo shows"
+      <textarea
+        className="textarea"
+        rows={2}
+        required={!!value}
+        aria-label="Explanation (required)"
+        placeholder={value ? "Explain what this shows (required)" : "Explanation — what this photo or video shows"}
         value={caption}
         disabled={disabled}
         onChange={(e) => onChange(value, e.target.value)}

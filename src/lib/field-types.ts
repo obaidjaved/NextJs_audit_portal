@@ -101,13 +101,37 @@ export interface TemplateField {
   required: boolean;
   presetKey?: string;
   options?: ChoiceOption[];
+  // Help text shown under the field name.
+  description?: string;
+  // Checkbox only: names of the individual checkboxes. Empty/absent = one
+  // plain checkbox (how older templates behave).
+  items?: string[];
+  // Pre-filled when an audit is started: the signed-in inspector, today, or
+  // the customer's site address.
+  autofill?: "inspector" | "date" | "site";
+}
+
+export const hasCheckboxItems = (f: TemplateField) => f.type === "checkbox" && (f.items?.length ?? 0) > 0;
+
+// Fields every new template starts with; edit or delete any of them.
+export function defaultTemplateFields(): TemplateField[] {
+  const mk = (n: string, f: Omit<TemplateField, "id">): TemplateField => ({ id: `field-default-${n}`, ...f });
+  return [
+    mk("inspector", { label: "Inspector name", type: "text", required: true, autofill: "inspector" }),
+    mk("date", { label: "Date", type: "date", required: true, autofill: "date" }),
+    mk("location", { label: "Location", type: "location", required: false, autofill: "site" }),
+    mk("instruction", { label: "Review the customer's scope and site instructions before you start.", type: "instruction", required: false }),
+    mk("remarks", { label: "Remarks of inspector", type: "text", required: false }),
+    mk("signature", { label: "Signature", type: "signature", required: true }),
+  ];
 }
 
 // True for field types whose response is always considered "filled" —
 // matches design-3.html's fieldHasValue(), so required-field validation
 // never blocks on these.
-export function fieldAlwaysSatisfied(type: FieldType): boolean {
-  return type === "checkbox" || type === "slider" || type === "instruction";
+export function fieldAlwaysSatisfied(type: FieldType, field?: TemplateField): boolean {
+  if (type === "checkbox") return !(field && hasCheckboxItems(field));
+  return type === "slider" || type === "instruction";
 }
 
 export function buildResponse(field: TemplateField) {
@@ -118,7 +142,9 @@ export function buildResponse(field: TemplateField) {
     case "choice":
       return { label, type: "choice" as const, option: null };
     case "checkbox":
-      return { label, type: "checkbox" as const, value: false };
+      return hasCheckboxItems(field)
+        ? { label, type: "checkbox" as const, value: false, checked: [] as string[] }
+        : { label, type: "checkbox" as const, value: false };
     case "photo":
       return { label, type: "photo" as const, value: null, caption: "" };
     case "annotation":

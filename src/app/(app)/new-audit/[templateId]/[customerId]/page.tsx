@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/access";
 import { templates, customers } from "@/lib/repo";
 import { AuditForm } from "@/components/audit-form/AuditForm";
 import type { TemplateField } from "@/lib/field-types";
@@ -9,6 +10,7 @@ export default async function NewAuditFormPage({
   params: Promise<{ templateId: string; customerId: string }>;
 }) {
   const { templateId, customerId } = await params;
+  const user = await requireUser();
 
   const [template, customer] = await Promise.all([templates.get(templateId), customers.get(customerId)]);
 
@@ -26,6 +28,8 @@ export default async function NewAuditFormPage({
       templateName={template.name}
       customerName={customer.name}
       fields={fields}
+      inspectorName={user.name ?? undefined}
+      siteAddress={[customer.site, customer.city, [customer.state, customer.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") || undefined}
     />
   );
 }

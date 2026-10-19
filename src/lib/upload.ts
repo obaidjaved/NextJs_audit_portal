@@ -52,7 +52,22 @@ export async function compressImage(file: File): Promise<File> {
   }
 }
 
+const VIDEO_EXT: Record<string, string> = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" };
+
+async function uploadVideo(file: File): Promise<string> {
+  const ext = VIDEO_EXT[file.type];
+  if (!ext) throw new Error("Unsupported video type. Use MP4, MOV or WebM.");
+  try {
+    const { upload } = await import("@vercel/blob/client");
+    const blob = await upload(`videos/${crypto.randomUUID()}.${ext}`, file, { access: "public", handleUploadUrl: "/api/upload/video" });
+    return blob.url;
+  } catch {
+    throw new Error("Couldn't upload the video. If it keeps failing, video storage (Vercel Blob) may not be enabled for this site.");
+  }
+}
+
 export async function uploadFile(original: File): Promise<string> {
+  if (original.type.startsWith("video/")) return uploadVideo(original);
   const file = await compressImage(original);
   const form = new FormData();
   form.append("file", file);

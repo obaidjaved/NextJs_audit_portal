@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { TemplateField } from "@/lib/field-types";
+import { defaultTemplateFields, type TemplateField } from "@/lib/field-types";
 import { createTemplate, updateTemplate, deleteTemplate } from "@/lib/actions/templates";
-import { FieldList, newField } from "./FieldList";
+import { FieldList } from "./FieldList";
 import { LivePreviewPanel } from "./LivePreviewPanel";
 import { ReportPreviewPanel } from "./ReportPreviewPanel";
 import { ReportStyleEditor } from "./ReportStyleEditor";
@@ -36,7 +36,7 @@ export function TemplateBuilder({
   const [state, setState] = useState<TemplateFormState>({
     name: initial?.name ?? "",
     category: initial?.category ?? "ELECTRICAL",
-    fields: initial?.fields ?? [newField()],
+    fields: initial?.fields ?? defaultTemplateFields(),
     approvalRequired: initial?.approvalRequired ?? false,
     reportStyle: initial?.reportStyle ?? "MODERN",
     reportAccentColor: initial?.reportAccentColor ?? null,
@@ -50,6 +50,8 @@ export function TemplateBuilder({
     if (unlabeled !== -1) return `Field ${unlabeled + 1} needs a label.`;
     const emptyChoice = state.fields.find((f) => f.type === "choice" && (!f.options || f.options.length === 0));
     if (emptyChoice) return `"${emptyChoice.label}" needs at least one option.`;
+    const badCheckbox = state.fields.find((f) => f.type === "checkbox" && f.items?.some((i) => !i.trim()));
+    if (badCheckbox) return `"${badCheckbox.label}" has an empty checkbox name.`;
     return null;
   }
 

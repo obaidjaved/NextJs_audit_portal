@@ -5,7 +5,7 @@ const optionRef = z.object({ label: z.string(), score: z.number().nullable(), fa
 export const responseSchema = z.discriminatedUnion("type", [
   z.object({ label: z.string(), type: z.literal("status"), value: z.enum(["pass", "marginal", "fail"]) }),
   z.object({ label: z.string(), type: z.literal("choice"), option: optionRef }),
-  z.object({ label: z.string(), type: z.literal("checkbox"), value: z.boolean() }),
+  z.object({ label: z.string(), type: z.literal("checkbox"), value: z.boolean(), checked: z.array(z.string()).optional() }),
   z.object({ label: z.string(), type: z.literal("photo"), value: z.string().nullable(), caption: z.string() }),
   z.object({ label: z.string(), type: z.literal("annotation"), value: z.string().nullable(), caption: z.string() }),
   z.object({ label: z.string(), type: z.literal("signature"), value: z.string().nullable() }),

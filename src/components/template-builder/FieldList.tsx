@@ -4,6 +4,7 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import type { TemplateField } from "@/lib/field-types";
 import { FieldTypePicker } from "./FieldTypePicker";
 import { ChoiceOptionsEditor } from "./ChoiceOptionsEditor";
+import { CheckboxItemsEditor } from "./CheckboxItemsEditor";
 
 let idSeq = 0;
 function newFieldId() {
@@ -59,7 +60,14 @@ export function FieldList({
               style={{ flex: "1 1 160px", minWidth: 0 }}
             />
 
-            <FieldTypePicker value={field.type} onChange={(type) => updateField(i, { type, options: type === "choice" ? field.options ?? [] : undefined })} />
+            <FieldTypePicker value={field.type} onChange={(type) =>
+                updateField(i, {
+                  type,
+                  options: type === "choice" ? field.options ?? [] : undefined,
+                  items: type === "checkbox" ? field.items : undefined,
+                })
+              }
+            />
 
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)", whiteSpace: "nowrap", flex: "none" }}>
               <input
@@ -74,6 +82,21 @@ export function FieldList({
               <Trash2 size={14} />
             </button>
           </div>
+
+          {field.type !== "instruction" && (
+            <input
+              className="input"
+              placeholder="Description (optional) — explains the field to the inspector"
+              value={field.description ?? ""}
+              maxLength={500}
+              onChange={(e) => updateField(i, { description: e.target.value || undefined })}
+              style={{ marginTop: 10, fontSize: 13 }}
+            />
+          )}
+
+          {field.type === "checkbox" && (
+            <CheckboxItemsEditor items={field.items ?? []} onChange={(items) => updateField(i, { items: items.length > 0 ? items : undefined })} />
+          )}
 
           {field.type === "choice" && (
             <ChoiceOptionsEditor

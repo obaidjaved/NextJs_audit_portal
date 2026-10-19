@@ -1,4 +1,5 @@
 import type { ResponseObject } from "@/lib/scoring";
+import { isVideoSrc } from "@/lib/media";
 
 function FindingValue({ r }: { r: ResponseObject }) {
   switch (r.type) {
@@ -11,17 +12,32 @@ function FindingValue({ r }: { r: ResponseObject }) {
         <span style={{ color: "var(--ink-3)" }}>No answer</span>
       );
     case "checkbox":
+      if (r.checked) {
+        return r.checked.length > 0 ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {r.checked.map((c) => (
+              <span key={c} className="pill ok" style={{ textTransform: "none", letterSpacing: 0 }}>{c}</span>
+            ))}
+          </div>
+        ) : (
+          <span style={{ color: "var(--ink-3)" }}>None selected</span>
+        );
+      }
       return <span>{r.value ? "Yes" : "No"}</span>;
     case "photo":
     case "annotation":
       return r.value ? (
         <div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={r.value} alt="" style={{ maxWidth: 220, borderRadius: 12, border: "1px solid var(--rule)" }} />
+          {isVideoSrc(r.value) ? (
+            <video src={r.value} controls playsInline preload="metadata" style={{ maxWidth: 320, borderRadius: 12, border: "1px solid var(--rule)", background: "#000" }} />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={r.value} alt="" style={{ maxWidth: 220, borderRadius: 12, border: "1px solid var(--rule)" }} />
+          )}
           {r.caption && <p style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 6 }}>{r.caption}</p>}
         </div>
       ) : (
-        <span style={{ color: "var(--ink-3)" }}>No photo</span>
+        <span style={{ color: "var(--ink-3)" }}>No media</span>
       );
     case "signature":
       return r.value ? (

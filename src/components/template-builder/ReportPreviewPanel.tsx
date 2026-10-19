@@ -16,10 +16,10 @@ function sampleValue(field: TemplateField): { text: string; tone: "ok" | "warn" 
       return { text: opt?.label ?? "Option", tone: opt?.fail ? "danger" : "ok" };
     }
     case "checkbox":
-      return { text: "Yes", tone: "plain" };
+      return { text: field.items && field.items.length > 0 ? field.items.slice(0, 2).join(", ") : "Yes", tone: "plain" };
     case "photo":
     case "annotation":
-      return { text: "Photo attached", tone: "plain" };
+      return { text: "Photo or video attached", tone: "plain" };
     case "signature":
       return { text: "Signed", tone: "plain" };
     case "slider":

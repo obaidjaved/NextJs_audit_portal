@@ -52,9 +52,11 @@ export function FieldRenderer({
       return (
         <CheckboxField
           label={field.label}
+          items={field.items}
           value={response?.type === "checkbox" ? response.value : false}
+          checked={response?.type === "checkbox" ? response.checked : undefined}
           disabled={disabled}
-          onChange={(value) => onChange({ label: field.label, type: "checkbox", value })}
+          onChange={(value, checked) => onChange({ label: field.label, type: "checkbox", value, ...(checked ? { checked } : {}) })}
         />
       );
     case "photo":

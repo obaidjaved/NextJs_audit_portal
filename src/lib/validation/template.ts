@@ -26,6 +26,9 @@ export const templateFieldSchema = z.object({
   required: z.boolean(),
   presetKey: z.string().optional(),
   options: z.array(choiceOptionSchema).optional(),
+  description: z.string().max(500).optional(),
+  items: z.array(z.string().trim().min(1, "Checkbox names can't be empty").max(120)).max(30).optional(),
+  autofill: z.enum(["inspector", "date", "site"]).optional(),
 });
 
 export const templateSchema = z.object({

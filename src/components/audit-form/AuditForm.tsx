@@ -20,6 +20,12 @@ interface DraftState {
   signature: string | null;
 }
 
+function todayLocal(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export interface AuditPhoto {
   id: string;
   src: string;
@@ -33,6 +39,8 @@ export function AuditForm({
   fields,
   auditId,
   initial,
+  inspectorName,
+  siteAddress,
 }: {
   templateId: string;
   customerId: string;
@@ -40,6 +48,9 @@ export function AuditForm({
   customerName: string;
   fields: TemplateField[];
   auditId?: string;
+  // Used to pre-fill fields the template marks as autofill.
+  inspectorName?: string;
+  siteAddress?: string;
   initial?: {
     responses: Record<string, ResponseObject>;
     notes: string;
@@ -59,8 +70,12 @@ export function AuditForm({
     if (initial) return initial.responses;
     const map: Record<string, ResponseObject> = {};
     for (const f of fields) {
-      const r = buildResponse(f);
-      if (r) map[f.id] = r as ResponseObject;
+      const r = buildResponse(f) as ResponseObject | null;
+      if (!r) continue;
+      if (f.autofill === "inspector" && r.type === "text" && inspectorName) r.value = inspectorName;
+      if (f.autofill === "date" && r.type === "date") r.value = todayLocal();
+      if (f.autofill === "site" && r.type === "location" && siteAddress) r.value = siteAddress;
+      map[f.id] = r;
     }
     return map;
   });
@@ -118,11 +133,23 @@ export function AuditForm({
   }
 
   function missingRequiredFields(): string[] {
-    return fields
-      .filter((f) => f.required && !fieldAlwaysSatisfied(f.type))
+    const missing = fields
+      .filter((f) => f.required && !fieldAlwaysSatisfied(f.type, f))
       .filter((f) => !responseHasValue(responses[f.id] ?? null))
       .map((f) => f.label || "Untitled field");
+    // Media with no explanation: the text box is mandatory once something is attached.
+    for (const f of fields) {
+      const r = responses[f.id];
+      if ((r?.type === "photo" || r?.type === "annotation") && r.value && !r.caption.trim()) {
+        missing.push(`${f.label || "Media"} (explanation)`);
+      }
+    }
+    return missing;
   }
+
+  // A template can carry its own Signature field; when it does, that is the
+  // audit's signature and the separate one at the bottom is hidden.
+  const signatureField = fields.find((f) => f.type === "signature");
 
   function buildPayload(draft: boolean) {
     return {
@@ -131,7 +158,12 @@ export function AuditForm({
       responses: fields.filter((f) => f.type !== "instruction").map((f) => responses[f.id]).filter(Boolean),
       notes,
       photos,
-      signature,
+      signature: signatureField
+        ? (() => {
+            const r = responses[signatureField.id];
+            return (r?.type === "signature" ? r.value : null) ?? signature;
+          })()
+        : signature,
       draft,
     };
   }
@@ -248,10 +280,12 @@ export function AuditForm({
         <textarea className="textarea" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
-      <div className="card" style={{ padding: 20 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Inspector Signature</h3>
-        <SignatureField value={signature} onChange={setSignature} />
-      </div>
+      {!signatureField && (
+        <div className="card" style={{ padding: 20 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Inspector Signature</h3>
+          <SignatureField value={signature} onChange={setSignature} />
+        </div>
+      )}
 
       <div style={{ marginTop: 20, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
         {errorPill}
