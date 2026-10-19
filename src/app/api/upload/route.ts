@@ -5,6 +5,7 @@ import path from "node:path";
 import { auth } from "@/lib/auth";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
+const INLINE_MAX_BYTES = 800 * 1024; // largest photo we'll store inline as a data URL
 
 // Only accept known-safe image types, and derive the stored filename's
 // extension from this allowlist — never from the client-supplied filename —
@@ -48,9 +49,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: blob.url });
   }
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadsDir, filename), buffer);
-  return NextResponse.json({ url: `/uploads/${filename}` });
+
+  // Local dev: write into public/uploads. Vercel's filesystem is read-only, so
+  // writing there fails; fall through to the inline fallback below.
+  if (!process.env.VERCEL) {
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      await mkdir(uploadsDir, { recursive: true });
+      await writeFile(path.join(uploadsDir, filename), buffer);
+      return NextResponse.json({ url: `/uploads/${filename}` });
+    } catch {
+      /* fall through */
+    }
+  }
+
+  // No Blob store configured: keep the (browser-compressed) photo inline in
+  // the audit as a data URL so uploads still work. Add BLOB_READ_WRITE_TOKEN
+  // to store photos as files instead.
+  if (buffer.length > INLINE_MAX_BYTES) {
+    return NextResponse.json(
+      { error: "Photo is too large to store without a Blob store. Try a smaller photo, or ask your admin to enable photo storage." },
+      { status: 413 },
+    );
+  }
+  return NextResponse.json({ url: `data:${file.type};base64,${buffer.toString("base64")}` });
 }

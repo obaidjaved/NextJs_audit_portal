@@ -157,6 +157,25 @@ export function AuditForm({
     });
   }
 
+  // Shown at the top and again at the end of the form, so a long audit doesn't
+  // need a scroll back up to save it.
+  const saveButtons = (
+    <div style={{ display: "flex", gap: 8 }}>
+      <button type="button" className="btn ghost sm" disabled={pending} onClick={() => save(true)}>
+        Save Draft
+      </button>
+      <button type="button" className="btn primary sm" disabled={pending} onClick={() => save(false)}>
+        {pending ? "Saving…" : "Complete Audit"}
+      </button>
+    </div>
+  );
+
+  const errorPill = error ? (
+    <div className="pill danger" role="alert" style={{ marginBottom: 16, display: "block", width: "fit-content", maxWidth: "100%", whiteSpace: "normal" }}>
+      {error}
+    </div>
+  ) : null;
+
   return (
     <div>
       <OfflineBanner />
@@ -175,21 +194,10 @@ export function AuditForm({
           <h1 className="disp" style={{ fontSize: 20, fontWeight: 800 }}>{templateName}</h1>
           <p style={{ fontSize: 13, color: "var(--ink-2)" }}>{customerName}</p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" className="btn ghost sm" disabled={pending} onClick={() => save(true)}>
-            Save Draft
-          </button>
-          <button type="button" className="btn primary sm" disabled={pending} onClick={() => save(false)}>
-            {pending ? "Saving…" : "Complete Audit"}
-          </button>
-        </div>
+        {saveButtons}
       </div>
 
-      {error && (
-        <div className="pill danger" style={{ marginBottom: 16, display: "block", width: "fit-content" }}>
-          {error}
-        </div>
-      )}
+      {errorPill}
 
       <div className="card" style={{ padding: 20, marginBottom: 20 }}>
         {fields.map((field) => (
@@ -243,6 +251,11 @@ export function AuditForm({
       <div className="card" style={{ padding: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Inspector Signature</h3>
         <SignatureField value={signature} onChange={setSignature} />
+      </div>
+
+      <div style={{ marginTop: 20, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
+        {errorPill}
+        {saveButtons}
       </div>
     </div>
   );
