@@ -82,7 +82,8 @@ export function CustomerSplitView({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedId = searchParams.get("customerId") ?? customers[0]?.id ?? null;
+  // No ?customerId= means list view; picking a customer opens the detail view.
+  const selectedId = searchParams.get("customerId");
   const [search, setSearch] = useState("");
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
@@ -126,9 +127,59 @@ export function CustomerSplitView({
     router.push(`/customers?customerId=${id}`);
   }
 
+  if (!selected) {
+    const auditCount = (id: string) => audits.filter((a) => a.customerId === id).length;
+    const TH = { textAlign: "left", padding: "10px 14px", fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: ".05em" } as const;
+    const TD = { padding: "12px 14px", fontSize: 13.5, borderTop: "1px solid var(--rule)" } as const;
+    return (
+      <div className="card" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="search-box" style={{ maxWidth: 360 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input placeholder="Search customers…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+            <thead>
+              <tr>
+                <th style={TH}>Customer</th>
+                <th style={TH}>Contact</th>
+                <th style={TH}>Location</th>
+                <th style={TH}>Email</th>
+                <th style={TH}>Phone</th>
+                <th style={{ ...TH, textAlign: "right" }}>Audits</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id} onClick={() => select(c.id)} style={{ cursor: "pointer" }}>
+                  <td style={TD}>
+                    <div style={{ fontWeight: 700 }}>{c.name}</div>
+                    {c.site && <div style={{ fontSize: 11.5, color: "var(--ink-2)" }}>{c.site}</div>}
+                  </td>
+                  <td style={TD}>{c.contact ?? "—"}</td>
+                  <td style={TD}>{[c.city, c.state].filter(Boolean).join(", ") || "—"}</td>
+                  <td style={TD}>{c.email ?? "—"}</td>
+                  <td style={TD}>{c.phone ?? "—"}</td>
+                  <td style={{ ...TD, textAlign: "right" }} className="mono">{auditCount(c.id)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <p style={{ fontSize: 13, color: "var(--ink-2)", padding: "14px" }}>No customers found.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="cust-shell">
       <div className="card" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+        <Link href="/customers" className="btn ghost sm" style={{ alignSelf: "flex-start" }}>← All customers</Link>
         <div className="search-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="7" />
