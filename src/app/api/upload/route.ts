@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { auth } from "@/lib/auth";
+import { blobConfigured } from "@/lib/blob-config";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const INLINE_MAX_BYTES = 800 * 1024; // largest photo we'll store inline as a data URL
@@ -18,7 +19,7 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/heic": ".heic",
 };
 
-// Uses Vercel Blob when BLOB_READ_WRITE_TOKEN is set (production/preview).
+// Uses Vercel Blob when a Blob store is connected (production/preview).
 // Falls back to writing into public/uploads for local dev, where no token
 // is configured — same response contract either way: { url }.
 export async function POST(request: Request) {
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
   const filename = `${randomUUID()}${ext}`;
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  if (blobConfigured()) {
     const { put } = await import("@vercel/blob");
     const blob = await put(filename, file, { access: "public", contentType: file.type });
     return NextResponse.json({ url: blob.url });
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
   }
 
   // No Blob store configured: keep the (browser-compressed) photo inline in
-  // the audit as a data URL so uploads still work. Add BLOB_READ_WRITE_TOKEN
+  // the audit as a data URL so uploads still work. Connect a Blob store
   // to store photos as files instead.
   if (buffer.length > INLINE_MAX_BYTES) {
     return NextResponse.json(

@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { auth } from "@/lib/auth";
+import { blobConfigured } from "@/lib/blob-config";
 
 const MAX_VIDEO_BYTES = 150 * 1024 * 1024; // 150MB
 
 // Videos are far larger than a serverless function will accept (4.5MB), so the
 // browser sends them straight to Vercel Blob; this route only hands out the
-// short-lived upload token. That needs a Blob store (BLOB_READ_WRITE_TOKEN).
+// short-lived upload token. That needs a connected Blob store.
 export async function POST(request: Request) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!blobConfigured()) {
     return NextResponse.json(
       { error: "Video upload needs file storage (Vercel Blob) to be enabled for this site. Photos work without it." },
       { status: 501 },
