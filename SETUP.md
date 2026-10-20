@@ -33,7 +33,7 @@ Project → **Settings → Environment Variables**:
 | `DATABASE_URL` | your Postgres connection string (see above) |
 | `AUTH_SECRET` | random string — generate with `npx auth secret` |
 | `NEXTAUTH_URL` | your production URL, e.g. `https://portal.tapsvs.com` (Vercel also sets `VERCEL_URL` automatically, which Auth.js trusts) |
-| Blob store | optional, for photo/video uploads: **Storage → Create → Blob**, then connect it to the project (adds `BLOB_STORE_ID` or `BLOB_READ_WRITE_TOKEN` automatically) |
+| Blob store | optional, for photo/video uploads: **Storage → Create → Blob**, then connect it to the project (adds `BLOB_STORE_ID` automatically — photos work with that; **video also needs `BLOB_READ_WRITE_TOKEN`**, copied from the store's `.env.local` tab into the project's Environment Variables) |
 
 ## 5. Run migrations and create the first admin
 Migrations aren't run automatically on deploy. From your machine, with `DATABASE_URL` pointed at the **production** database:

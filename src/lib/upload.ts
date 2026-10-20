@@ -58,11 +58,18 @@ async function uploadVideo(file: File): Promise<string> {
   const ext = VIDEO_EXT[file.type];
   if (!ext) throw new Error("Unsupported video type. Use MP4, MOV or WebM.");
   try {
+    const check = await fetch("/api/upload/video").then((r) => r.json() as Promise<{ enabled: boolean; reason: string }>);
+    if (!check.enabled) throw new Error(check.reason);
+  } catch (err) {
+    throw err instanceof Error && err.message.startsWith("Video upload needs") ? err : new Error("Couldn't reach the server. Check your connection and try again.");
+  }
+  try {
     const { upload } = await import("@vercel/blob/client");
     const blob = await upload(`videos/${crypto.randomUUID()}.${ext}`, file, { access: "public", handleUploadUrl: "/api/upload/video" });
     return blob.url;
-  } catch {
-    throw new Error("Couldn't upload the video. If it keeps failing, video storage (Vercel Blob) may not be enabled for this site.");
+  } catch (err) {
+    const detail = err instanceof Error && err.message ? ` (${err.message})` : "";
+    throw new Error(`Couldn't upload the video${detail}. Please try again.`);
   }
 }
 
