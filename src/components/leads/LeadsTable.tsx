@@ -38,7 +38,22 @@ export interface LeadRow {
   amountPaid: number;
 }
 
-const TH = ["Lead", "Date of lead", "Location", "Service type", "Sub service", "Service required by", "Payment status", "Budget quote", "Record payment", "Lead status", "Contact", ""];
+// Header label + column width (px). The table uses fixed widths so every column lines up.
+const COLS: [string, number][] = [
+  ["Lead", 240],
+  ["Date of lead", 120],
+  ["Location", 140],
+  ["Service type", 170],
+  ["Sub service", 250],
+  ["Service required by", 170],
+  ["Payment status", 150],
+  ["Budget quote", 140],
+  ["Record payment", 150],
+  ["Lead status", 160],
+  ["Contact", 130],
+  ["", 100],
+];
+const TABLE_WIDTH = COLS.reduce((n, [, w]) => n + w, 0);
 
 function LeadDetails({ l, canReview }: { l: LeadRow; canReview: boolean }) {
   const router = useRouter();
@@ -214,10 +229,15 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
       ) : (
         <>
           <div className="dt-wrap">
-            <table className="dt">
+            <table className="dt" style={{ width: TABLE_WIDTH }}>
+              <colgroup>
+                {COLS.map(([, w], i) => (
+                  <col key={i} style={{ width: w }} />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
-                  {TH.map((h, i) => (
+                  {COLS.map(([h], i) => (
                     <th key={i}>{h}</th>
                   ))}
                 </tr>
@@ -243,7 +263,7 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
                       </tr>
                       {open === l.id && (
                         <tr className="dt-detail">
-                          <td colSpan={TH.length}>
+                          <td colSpan={COLS.length}>
                             <LeadDetails l={l} canReview={canReview} />
                           </td>
                         </tr>

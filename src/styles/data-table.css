@@ -9,8 +9,9 @@
 }
 
 .dt {
-  width: 100%;
-  min-width: 1480px;
+  /* Column widths come from <colgroup> (see the tables), so nothing reflows or overlaps. */
+  table-layout: fixed;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
@@ -32,7 +33,8 @@
 .dt td {
   padding: 12px;
   border-top: 1px solid var(--rule);
-  vertical-align: top;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .dt tbody tr:first-child td {
@@ -62,7 +64,7 @@
 }
 
 .dt-contact {
-  min-width: 190px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -88,8 +90,19 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  min-width: 150px;
-  max-width: 260px;
+  min-width: 0;
+}
+
+/* Long service names wrap inside their pill instead of spilling into the next column. */
+.dt-chips .pill {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: 4px 10px;
+  line-height: 1.3;
+  text-align: left;
 }
 
 .dt-select,
@@ -97,7 +110,8 @@
   height: 36px;
   font-size: 12.5px;
   padding: 0 10px;
-  min-width: 130px;
+  width: 100%;
+  min-width: 0;
 }
 
 .dt-money {
@@ -107,14 +121,15 @@
 }
 
 .dt-money .dt-input {
-  min-width: 100px;
-  max-width: 130px;
+  min-width: 0;
 }
 
+/* Call / Email: two equal-width buttons, stacked in the table, side by side on a phone card. */
 .dt-actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .dt-actions .btn {
@@ -154,11 +169,8 @@
   margin-bottom: 4px;
 }
 
-.dt-card .dt-select,
-.dt-card .dt-input {
-  width: 100%;
-  min-width: 0;
-  max-width: none;
+.dt-card .dt-actions {
+  flex-direction: row;
 }
 
 .dt-card .dt-actions .btn {

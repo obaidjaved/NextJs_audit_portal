@@ -27,7 +27,22 @@ export interface CustomerOpsRow {
   finalReportDoc: string | null;
 }
 
-const TH = ["Customer", "Service type", "Sub service", "Service required by", "Assigned auditor", "Date assigned", "Payment status", "Project value", "Final report", "Progress", "Contact", ""];
+// Header label + column width (px). The table uses fixed widths so every column lines up.
+const COLS: [string, number][] = [
+  ["Customer", 240],
+  ["Service type", 170],
+  ["Sub service", 250],
+  ["Service required by", 170],
+  ["Assigned auditor", 170],
+  ["Date assigned", 130],
+  ["Payment status", 150],
+  ["Project value", 140],
+  ["Final report", 130],
+  ["Progress", 160],
+  ["Contact", 130],
+  ["", 90],
+];
+const TABLE_WIDTH = COLS.reduce((n, [, w]) => n + w, 0);
 
 // "First Last, Title" -> name + title
 function splitContact(contact: string | null): { name: string; title: string | null } {
@@ -123,10 +138,15 @@ export function CustomersTable({
       ) : (
         <>
           <div className="dt-wrap">
-            <table className="dt">
+            <table className="dt" style={{ width: TABLE_WIDTH }}>
+              <colgroup>
+                {COLS.map(([, w], i) => (
+                  <col key={i} style={{ width: w }} />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
-                  {TH.map((h, i) => (
+                  {COLS.map(([h], i) => (
                     <th key={i}>{h}</th>
                   ))}
                 </tr>
