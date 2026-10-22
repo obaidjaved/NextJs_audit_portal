@@ -5,12 +5,16 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireStaff } from "@/lib/access";
 import { customers, requests } from "@/lib/repo";
 import { LEAD_STATUSES, PAYMENT_STATUSES, PROGRESS_STATUSES } from "@/lib/ops-options";
+import { ALL_SERVICES } from "@/lib/quote-options";
 import { parseOrThrow } from "@/lib/validation/parse";
+
+const services = z.array(z.enum(ALL_SERVICES as [string, ...string[]]));
 
 const money = z.number().min(0, "Must be 0 or more").max(999_999_999).nullable();
 
 const leadPatchSchema = z
   .object({
+    services: services.min(1, "Choose at least one service"),
     leadStatus: z.enum(LEAD_STATUSES),
     paymentStatus: z.enum(PAYMENT_STATUSES),
     budgetQuote: money,
@@ -32,6 +36,7 @@ export async function updateLead(id: string, input: unknown) {
 
 const customerOpsSchema = z
   .object({
+    services,
     paymentStatus: z.enum(PAYMENT_STATUSES),
     progressStatus: z.enum(PROGRESS_STATUSES),
     projectValue: money,

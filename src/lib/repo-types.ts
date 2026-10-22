@@ -182,6 +182,7 @@ export interface CustomerRequest {
 }
 // What staff can change on a lead from the dashboard.
 export interface LeadPatch {
+  services?: string[];
   leadStatus?: string;
   paymentStatus?: string;
   budgetQuote?: number | null;

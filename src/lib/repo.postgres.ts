@@ -388,10 +388,14 @@ const requests: Backend["requests"] = {
     return requestOf(r);
   },
   update: async (id, patch) => {
-    const { dateNeeded, ...rest } = patch;
+    const { dateNeeded, services, ...rest } = patch;
     await prisma.customerRequest.update({
       where: { id },
-      data: { ...rest, ...(dateNeeded ? { dateNeeded: parseDateOnlyUTC(dateNeeded) } : {}) },
+      data: {
+        ...rest,
+        ...(services !== undefined ? { services: services as Prisma.InputJsonValue } : {}),
+        ...(dateNeeded ? { dateNeeded: parseDateOnlyUTC(dateNeeded) } : {}),
+      },
     });
   },
   approve: async (id) => {

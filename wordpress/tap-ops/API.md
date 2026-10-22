@@ -117,7 +117,7 @@ budgetQuote: number|null, amountPaid: number }`
   creates the customer (name=companyName, site="street, street2", city, state, zip, contact="First Last, Title",
   email, phone), sets status APPROVED, reviewedBy/At, customerId.
 - `POST /requests/{id}/reject` (admin) `{note?}` -> `{ok:true}`; only while PENDING.
-- `PATCH /requests/{id}` (staff) `{leadStatus?, paymentStatus?, budgetQuote?, amountPaid?, dateNeeded?}` -> Request. Approving sets
+- `PATCH /requests/{id}` (staff) `{services?, leadStatus?, paymentStatus?, budgetQuote?, amountPaid?, dateNeeded?}` -> Request. Approving sets
   leadStatus `Converted` and copies services, dateNeeded (as serviceDate), paymentStatus and budgetQuote (as projectValue) to the
   new customer; rejecting sets `Not Interested`. A request created with `source: "manual"` only needs name, company and phone or email.
 

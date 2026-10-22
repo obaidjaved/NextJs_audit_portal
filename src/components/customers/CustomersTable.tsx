@@ -5,7 +5,8 @@ import Link from "next/link";
 import { updateCustomerOps } from "@/lib/actions/ops";
 import { PAYMENT_STATUSES, PROGRESS_STATUSES } from "@/lib/ops-options";
 import { InlineDate, InlineMoney, InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, ContactCell, ServiceChips, fmtDate } from "@/components/ops/Parts";
+import { CallEmail, ContactCell, fmtDate } from "@/components/ops/Parts";
+import { ServicePicker } from "@/components/ops/ServicePicker";
 
 export interface CustomerOpsRow {
   id: string;
@@ -61,8 +62,8 @@ export function CustomersTable({
     const auditorOptions = [{ value: "", label: "Unassigned" }, ...auditors.map((a) => ({ value: a.id, label: a.name }))];
     return {
       contact: <ContactCell name={name} title={title} company={c.name} email={c.email} phone={c.phone} />,
-      type: <ServiceChips services={c.services} kind="type" />,
-      sub: <ServiceChips services={c.services} kind="sub" />,
+      type: <ServicePicker label="Service type" kind="type" services={c.services} onSave={(s) => updateCustomerOps(c.id, { services: s })} />,
+      sub: <ServicePicker label="Sub service" kind="sub" services={c.services} onSave={(s) => updateCustomerOps(c.id, { services: s })} />,
       required: <InlineDate label="Date of service required" value={c.serviceDate} onSave={(v) => updateCustomerOps(c.id, { serviceDate: v })} />,
       auditor: canAssign ? (
         <InlineSelect label="Assigned auditor" value={c.assignedAuditorId ?? ""} options={auditorOptions} onSave={(v) => updateCustomerOps(c.id, { assignedAuditorId: v || null })} />

@@ -7,7 +7,8 @@ import { approveQuoteRequest, rejectQuoteRequest } from "@/lib/actions/quote-req
 import { updateLead } from "@/lib/actions/ops";
 import { LEAD_STATUSES, PAYMENT_STATUSES, money } from "@/lib/ops-options";
 import { InlineDate, InlineMoney, InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, ContactCell, ServiceChips, fmtDate } from "@/components/ops/Parts";
+import { CallEmail, ContactCell, fmtDate } from "@/components/ops/Parts";
+import { ServicePicker } from "@/components/ops/ServicePicker";
 
 export interface LeadRow {
   id: string;
@@ -156,8 +157,8 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
       contact: <ContactCell name={`${l.firstName} ${l.lastName}`.trim()} title={l.title} company={l.companyName} email={l.email} phone={l.phone} />,
       date: fmtDate(l.createdAt),
       location: [l.city, l.state].filter(Boolean).join(", ") || "—",
-      type: <ServiceChips services={l.services} kind="type" />,
-      sub: <ServiceChips services={l.services} kind="sub" />,
+      type: <ServicePicker label="Service type" kind="type" services={l.services} requireOne onSave={(s) => updateLead(l.id, { services: s })} />,
+      sub: <ServicePicker label="Sub service" kind="sub" services={l.services} requireOne onSave={(s) => updateLead(l.id, { services: s })} />,
       required: <InlineDate label="Date of service required" value={l.dateNeeded} onSave={(v) => updateLead(l.id, { dateNeeded: v ?? l.dateNeeded })} />,
       payment: <InlineSelect label="Payment status" value={l.paymentStatus} options={PAYMENT_STATUSES} onSave={(v) => updateLead(l.id, { paymentStatus: v })} />,
       quote: <InlineMoney label="Budget quote" value={l.budgetQuote} onSave={(v) => updateLead(l.id, { budgetQuote: v })} />,

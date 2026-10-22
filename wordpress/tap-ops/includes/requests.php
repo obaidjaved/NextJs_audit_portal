@@ -177,6 +177,13 @@ function tap_ops_h_request_patch( WP_REST_Request $request ) {
 	}
 	$b = tap_ops_body( $request );
 	$d = array();
+	if ( array_key_exists( 'services', $b ) ) {
+		$list = tap_ops_string_list( $b['services'] );
+		if ( null === $list ) {
+			return tap_ops_err( 422, 'validation', 'services must be an array of strings.' );
+		}
+		$d['services'] = tap_ops_json_in( $list );
+	}
 	if ( array_key_exists( 'leadStatus', $b ) ) {
 		if ( ! in_array( $b['leadStatus'], tap_ops_lead_statuses(), true ) ) {
 			return tap_ops_err( 422, 'validation', 'leadStatus is invalid.' );
