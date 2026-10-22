@@ -1,0 +1,186 @@
+/* Leads & Customers dashboards: a wide spreadsheet-style table on desktop,
+   one stacked card per record on phones. */
+
+.dt-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  background: var(--card);
+}
+
+.dt {
+  width: 100%;
+  min-width: 1480px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.dt th {
+  text-align: left;
+  padding: 11px 12px;
+  background: var(--card-soft);
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rule);
+}
+
+.dt td {
+  padding: 12px;
+  border-top: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.dt tbody tr:first-child td {
+  border-top: none;
+}
+
+/* The person/company column stays put while the rest scrolls sideways. */
+.dt th:first-child,
+.dt td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--card);
+  box-shadow: 1px 0 0 var(--rule);
+}
+
+.dt th:first-child {
+  background: var(--card-soft);
+}
+
+.dt tr.dt-detail td {
+  background: var(--card-soft);
+}
+
+.dt tr.dt-detail td:first-child {
+  background: var(--card-soft);
+}
+
+.dt-contact {
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dt-contact-name {
+  font-weight: 800;
+  font-size: 13.5px;
+}
+
+.dt-contact-co {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.dt-contact-line {
+  color: var(--ink-2);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.dt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 150px;
+  max-width: 260px;
+}
+
+.dt-select,
+.dt-input {
+  height: 36px;
+  font-size: 12.5px;
+  padding: 0 10px;
+  min-width: 130px;
+}
+
+.dt-money {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dt-money .dt-input {
+  min-width: 100px;
+  max-width: 130px;
+}
+
+.dt-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dt-actions .btn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+.dt-cards {
+  display: none;
+}
+
+/* One record per card on phones: same data, stacked in two columns. */
+.dt-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dt-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.dt-card-grid > .dt-wide {
+  grid-column: 1 / -1;
+}
+
+.dt-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+
+.dt-card .dt-select,
+.dt-card .dt-input {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.dt-card .dt-actions .btn {
+  flex: 1 1 0;
+}
+
+.dt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 860px) {
+  .dt-wrap {
+    display: none;
+  }
+
+  .dt-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}

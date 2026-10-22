@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'TAP_OPS_VERSION', '1.0.0' );
-define( 'TAP_OPS_DB_VERSION', '1' );
+define( 'TAP_OPS_DB_VERSION', '2' );
 define( 'TAP_OPS_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once TAP_OPS_DIR . 'includes/helpers.php';

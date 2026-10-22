@@ -11,6 +11,8 @@ function tap_ops_install_schema() {
 	global $wpdb;
 	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
+	$previous_version = (string) get_option( 'tap_ops_db_version', '' );
+
 	$c = $wpdb->get_charset_collate();
 	$t = function ( $n ) {
 		return tap_ops_t( $n );
@@ -27,6 +29,13 @@ function tap_ops_install_schema() {
   contact varchar(255) DEFAULT NULL,
   email varchar(255) DEFAULT NULL,
   phone varchar(50) DEFAULT NULL,
+  services longtext,
+  service_date date DEFAULT NULL,
+  assigned_auditor_id bigint(20) unsigned DEFAULT NULL,
+  assigned_at datetime DEFAULT NULL,
+  payment_status varchar(30) NOT NULL DEFAULT 'None',
+  project_value decimal(12,2) DEFAULT NULL,
+  progress_status varchar(30) NOT NULL DEFAULT 'In progress',
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY name (name)
@@ -142,6 +151,10 @@ function tap_ops_install_schema() {
   review_note text,
   customer_id bigint(20) unsigned DEFAULT NULL,
   source varchar(100) NOT NULL DEFAULT '',
+  lead_status varchar(30) NOT NULL DEFAULT 'New',
+  payment_status varchar(30) NOT NULL DEFAULT 'None',
+  budget_quote decimal(12,2) DEFAULT NULL,
+  amount_paid decimal(12,2) NOT NULL DEFAULT 0,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY status (status)
@@ -155,6 +168,16 @@ function tap_ops_install_schema() {
 
 	foreach ( $sql as $statement ) {
 		dbDelta( $statement );
+	}
+
+	// v2 added lead/customer tracking columns: give leads that were already
+	// decided a matching status, and let existing customers inherit their lead's services.
+	if ( '1' === $previous_version ) {
+		$rq = tap_ops_t( 'requests' );
+		$cu = tap_ops_t( 'customers' );
+		$wpdb->query( "UPDATE $rq SET lead_status = 'Converted' WHERE status = 'APPROVED'" ); // phpcs:ignore
+		$wpdb->query( "UPDATE $rq SET lead_status = 'Not Interested' WHERE status = 'REJECTED'" ); // phpcs:ignore
+		$wpdb->query( "UPDATE $cu c INNER JOIN $rq r ON r.customer_id = c.id SET c.services = r.services, c.service_date = r.date_needed" ); // phpcs:ignore
 	}
 
 	update_option( 'tap_ops_db_version', TAP_OPS_DB_VERSION );

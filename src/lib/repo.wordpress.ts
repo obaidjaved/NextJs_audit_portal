@@ -31,7 +31,12 @@ async function actor(): Promise<string> {
 }
 
 function customerOf(c: Record<string, unknown>): Customer {
-  return { ...(c as unknown as Customer), createdAt: toDate(c.createdAt) };
+  return {
+    ...(c as unknown as Customer),
+    createdAt: toDate(c.createdAt),
+    services: asArr<string>(c.services),
+    assignedAt: toDateOrNull(c.assignedAt),
+  };
 }
 function templateOf(t: Record<string, unknown>): Template {
   return { ...(t as unknown as Template), createdAt: toDate(t.createdAt), updatedAt: toDate(t.updatedAt) };
@@ -170,6 +175,9 @@ const requests: Backend["requests"] = {
   // Public intake: no signed-in user, matching the API contract.
   create: async (data, opts) =>
     requestOf(await wp<Record<string, unknown>>("/requests", { method: "POST", body: opts?.manual ? { ...data, source: "manual" } : data })),
+  update: async (id, patch) => {
+    await wp(`/requests/${id}`, { method: "PATCH", body: patch, userId: await actor() });
+  },
   approve: async (id) => wp<{ customerId: string | null }>(`/requests/${id}/approve`, { method: "POST", userId: await actor() }),
   reject: async (id, note) => {
     await wp(`/requests/${id}/reject`, { method: "POST", body: { note }, userId: await actor() });

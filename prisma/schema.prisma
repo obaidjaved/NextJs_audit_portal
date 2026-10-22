@@ -65,6 +65,7 @@ model User {
   createdActions   CorrectiveAction[] @relation("ActionCreator")
   events           AuditEvent[]
   reviewedRequests CustomerRequest[]  @relation("RequestReviewer")
+  assignedCustomers Customer[]        @relation("CustomerAuditor")
 }
 
 model Customer {
@@ -79,6 +80,16 @@ model Customer {
   phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Operations tracking (customers dashboard)
+  services          Json      @default("[]") // string[] — sub-services, e.g. "Arc Flash Compliance"
+  serviceDate       DateTime? @db.Date // date the service is required
+  assignedAuditorId String?
+  assignedAuditor   User?     @relation("CustomerAuditor", fields: [assignedAuditorId], references: [id], onDelete: SetNull)
+  assignedAt        DateTime?
+  paymentStatus     String    @default("None") // None | Partial | Full Payment
+  projectValue      Float?
+  progressStatus    String    @default("In progress") // In progress | Rescheduled | Completed
 
   audits    Audit[]
   schedules Schedule[]
@@ -230,6 +241,12 @@ model CustomerRequest {
   customerId     String?       @unique
   customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())
+
+  // Lead management (leads dashboard)
+  leadStatus    String @default("New") // New | Contacted | In progress | Cold | Not Interested | Converted
+  paymentStatus String @default("None") // None | Partial | Full Payment
+  budgetQuote   Float?
+  amountPaid    Float  @default(0)
 
   @@index([status])
 }

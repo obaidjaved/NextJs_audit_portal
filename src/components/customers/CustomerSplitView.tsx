@@ -7,6 +7,7 @@ import { CalendarGrid, type CalendarEvent } from "@/components/calendar/Calendar
 import { auditStatus } from "@/lib/scoring";
 import { initials } from "@/lib/initials";
 import { FREQUENCY_LABEL, type ScheduleFrequency } from "@/lib/schedule";
+import { CustomersTable } from "./CustomersTable";
 
 export interface CustomerRow {
   id: string;
@@ -18,6 +19,14 @@ export interface CustomerRow {
   contact: string | null;
   email: string | null;
   phone: string | null;
+  services: string[];
+  serviceDate: string | null;
+  assignedAuditorId: string | null;
+  assignedAuditorName: string | null;
+  assignedAt: string | null;
+  paymentStatus: string;
+  projectValue: number | null;
+  progressStatus: string;
 }
 
 export interface AuditRow {
@@ -74,7 +83,11 @@ export function CustomerSplitView({
   audits,
   actions,
   schedules,
+  auditors,
+  canAssign,
 }: {
+  auditors: { id: string; name: string }[];
+  canAssign: boolean;
   customers: CustomerRow[];
   audits: AuditRow[];
   actions: ActionSummary[];
@@ -128,51 +141,32 @@ export function CustomerSplitView({
   }
 
   if (!selected) {
-    const auditCount = (id: string) => audits.filter((a) => a.customerId === id).length;
-    const TH = { textAlign: "left", padding: "10px 14px", fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: ".05em" } as const;
-    const TD = { padding: "12px 14px", fontSize: 13.5, borderTop: "1px solid var(--rule)" } as const;
+    const finalReport = (id: string) =>
+      audits
+        .filter((a) => a.customerId === id && !a.draft && !a.pendingApproval)
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
     return (
-      <div className="card" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="search-box" style={{ maxWidth: 360 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input placeholder="Search customers…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
-            <thead>
-              <tr>
-                <th style={TH}>Customer</th>
-                <th style={TH}>Contact</th>
-                <th style={TH}>Location</th>
-                <th style={TH}>Email</th>
-                <th style={TH}>Phone</th>
-                <th style={{ ...TH, textAlign: "right" }}>Audits</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} onClick={() => select(c.id)} style={{ cursor: "pointer" }}>
-                  <td style={TD}>
-                    <div style={{ fontWeight: 700 }}>{c.name}</div>
-                    {c.site && <div style={{ fontSize: 11.5, color: "var(--ink-2)" }}>{c.site}</div>}
-                  </td>
-                  <td style={TD}>{c.contact ?? "—"}</td>
-                  <td style={TD}>{[c.city, c.state].filter(Boolean).join(", ") || "—"}</td>
-                  <td style={TD}>{c.email ?? "—"}</td>
-                  <td style={TD}>{c.phone ?? "—"}</td>
-                  <td style={{ ...TD, textAlign: "right" }} className="mono">{auditCount(c.id)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <p style={{ fontSize: 13, color: "var(--ink-2)", padding: "14px" }}>No customers found.</p>
-          )}
-        </div>
-      </div>
+      <CustomersTable
+        auditors={auditors}
+        canAssign={canAssign}
+        customers={customers.map((c) => ({
+          id: c.id,
+          name: c.name,
+          contact: c.contact,
+          email: c.email,
+          phone: c.phone,
+          services: c.services,
+          serviceDate: c.serviceDate,
+          assignedAuditorId: c.assignedAuditorId,
+          assignedAuditorName: c.assignedAuditorName,
+          assignedAt: c.assignedAt,
+          paymentStatus: c.paymentStatus,
+          projectValue: c.projectValue,
+          progressStatus: c.progressStatus,
+          finalReportId: finalReport(c.id)?.id ?? null,
+          finalReportDoc: finalReport(c.id)?.docNumber ?? null,
+        }))}
+      />
     );
   }
 

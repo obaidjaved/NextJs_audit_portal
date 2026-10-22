@@ -156,6 +156,7 @@ function tap_ops_register_routes() {
 			array( 'POST', 'tap_ops_h_request_create', 'none' ),
 		)
 	);
+	$add( "/requests/$id", array( array( 'PATCH', 'tap_ops_h_request_patch', 'staff' ) ) );
 	$add( '/requests/pending-count', array( array( 'GET', 'tap_ops_h_requests_pending_count', 'staff' ) ) );
 	$add( "/requests/$id/approve", array( array( 'POST', 'tap_ops_h_request_approve', 'admin' ) ) );
 	$add( "/requests/$id/reject", array( array( 'POST', 'tap_ops_h_request_reject', 'admin' ) ) );

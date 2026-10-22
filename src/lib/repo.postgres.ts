@@ -8,6 +8,7 @@ import {
   RepoError,
   type Backend,
   type Category,
+  type Customer,
   type CustomerInput,
   type TemplateInput,
   type Audit,
@@ -65,6 +66,28 @@ function actionOf(a: Prisma.CorrectiveActionGetPayload<{ include: { customer: { 
   };
 }
 
+const customerInclude = { assignedAuditor: { select: { name: true } } } as const;
+
+function customerOf(c: Prisma.CustomerGetPayload<{ include: typeof customerInclude }>): Customer {
+  const { assignedAuditor, serviceDate, services, ...rest } = c;
+  return {
+    ...rest,
+    services: Array.isArray(services) ? (services as string[]) : [],
+    serviceDate: serviceDate ? dateOnlyStringUTC(serviceDate) : null,
+    assignedAuditorName: assignedAuditor?.name ?? null,
+  };
+}
+
+// Translate the app-level customer fields into Prisma's column types.
+function customerData(data: Partial<CustomerInput>) {
+  const { services, serviceDate, ...rest } = data;
+  return {
+    ...rest,
+    ...(services !== undefined ? { services: services as Prisma.InputJsonValue } : {}),
+    ...(serviceDate !== undefined ? { serviceDate: serviceDate ? parseDateOnlyUTC(serviceDate) : null } : {}),
+  };
+}
+
 function requestOf(r: Prisma.CustomerRequestGetPayload<{ include: { reviewedBy: { select: { name: true } } } }>): CustomerRequest {
   return {
     id: r.id,
@@ -90,6 +113,10 @@ function requestOf(r: Prisma.CustomerRequestGetPayload<{ include: { reviewedBy: 
     reviewNote: r.reviewNote,
     customerId: r.customerId,
     createdAt: r.createdAt,
+    leadStatus: r.leadStatus,
+    paymentStatus: r.paymentStatus,
+    budgetQuote: r.budgetQuote,
+    amountPaid: r.amountPaid,
   };
 }
 
@@ -135,10 +162,31 @@ const users: Backend["users"] = {
 };
 
 const customers: Backend["customers"] = {
-  list: () => prisma.customer.findMany({ orderBy: { name: "asc" } }),
-  get: (id) => prisma.customer.findUnique({ where: { id } }),
-  create: (data: CustomerInput) => prisma.customer.create({ data }),
-  update: (id, data) => prisma.customer.update({ where: { id }, data }),
+  list: async () => (await prisma.customer.findMany({ orderBy: { name: "asc" }, include: customerInclude })).map(customerOf),
+  get: async (id) => {
+    const c = await prisma.customer.findUnique({ where: { id }, include: customerInclude });
+    return c ? customerOf(c) : null;
+  },
+  create: async (data: CustomerInput) => {
+    const assigned = data.assignedAuditorId ? { assignedAt: new Date() } : {};
+    return customerOf(await prisma.customer.create({ data: { ...customerData(data), ...assigned, name: data.name }, include: customerInclude }));
+  },
+  update: async (id, data) => {
+    const extra: { assignedAt?: Date | null } = {};
+    if (data.assignedAuditorId !== undefined) {
+      const current = await prisma.customer.findUnique({ where: { id }, select: { assignedAuditorId: true } });
+      if (current && current.assignedAuditorId !== (data.assignedAuditorId || null)) {
+        extra.assignedAt = data.assignedAuditorId ? new Date() : null;
+      }
+    }
+    return customerOf(
+      await prisma.customer.update({
+        where: { id },
+        data: { ...customerData(data), ...extra, ...(data.assignedAuditorId !== undefined ? { assignedAuditorId: data.assignedAuditorId || null } : {}) },
+        include: customerInclude,
+      }),
+    );
+  },
   remove: async (id) => {
     try {
       await prisma.customer.delete({ where: { id } });
@@ -339,6 +387,13 @@ const requests: Backend["requests"] = {
     });
     return requestOf(r);
   },
+  update: async (id, patch) => {
+    const { dateNeeded, ...rest } = patch;
+    await prisma.customerRequest.update({
+      where: { id },
+      data: { ...rest, ...(dateNeeded ? { dateNeeded: parseDateOnlyUTC(dateNeeded) } : {}) },
+    });
+  },
   approve: async (id) => {
     const reviewerId = await actor();
     const req = await prisma.customerRequest.findUnique({ where: { id } });
@@ -348,6 +403,7 @@ const requests: Backend["requests"] = {
       where: { id, status: "PENDING" },
       data: {
         status: "APPROVED",
+        leadStatus: "Converted",
         reviewedBy: { connect: { id: reviewerId } },
         reviewedAt: new Date(),
         customer: {
@@ -360,6 +416,10 @@ const requests: Backend["requests"] = {
             contact: [`${req.firstName} ${req.lastName}`, req.title].filter(Boolean).join(", "),
             email: req.email || null,
             phone: req.phone || null,
+            services: Array.isArray(req.services) ? (req.services as Prisma.InputJsonValue) : [],
+            serviceDate: req.dateNeeded,
+            paymentStatus: req.paymentStatus,
+            projectValue: req.budgetQuote,
           },
         },
       },
@@ -371,7 +431,7 @@ const requests: Backend["requests"] = {
     try {
       await prisma.customerRequest.update({
         where: { id, status: "PENDING" },
-        data: { status: "REJECTED", reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note?.trim().slice(0, 500) || null },
+        data: { status: "REJECTED", leadStatus: "Not Interested", reviewedById: reviewerId, reviewedAt: new Date(), reviewNote: note?.trim().slice(0, 500) || null },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {

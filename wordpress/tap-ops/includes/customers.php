@@ -21,7 +21,32 @@ function tap_ops_customer_fields() {
 	);
 }
 
+function tap_ops_lead_statuses() {
+	return array( 'New', 'Contacted', 'In progress', 'Cold', 'Not Interested', 'Converted' );
+}
+
+function tap_ops_payment_statuses() {
+	return array( 'None', 'Partial', 'Full Payment' );
+}
+
+function tap_ops_progress_statuses() {
+	return array( 'In progress', 'Rescheduled', 'Completed' );
+}
+
+/** Money input: null/'' -> null, a non-negative number -> rounded float, anything else -> false. */
+function tap_ops_money_in( $value ) {
+	if ( null === $value || '' === $value ) {
+		return null;
+	}
+	if ( ! is_numeric( $value ) || (float) $value < 0 || (float) $value > 999999999 ) {
+		return false;
+	}
+	return round( (float) $value, 2 );
+}
+
 function tap_ops_customer_out( array $r ) {
+	$aid     = isset( $r['assigned_auditor_id'] ) ? (int) $r['assigned_auditor_id'] : 0;
+	$auditor = $aid ? get_userdata( $aid ) : false;
 	return array(
 		'id'        => (string) $r['id'],
 		'name'      => (string) $r['name'],
@@ -33,6 +58,14 @@ function tap_ops_customer_out( array $r ) {
 		'email'     => tap_ops_str_or_null( $r['email'] ),
 		'phone'     => tap_ops_str_or_null( $r['phone'] ),
 		'createdAt' => tap_ops_iso( $r['created_at'] ),
+		'services'  => array_values( (array) tap_ops_json_out( isset( $r['services'] ) ? $r['services'] : null, array() ) ),
+		'serviceDate'         => tap_ops_date_out( isset( $r['service_date'] ) ? $r['service_date'] : null ),
+		'assignedAuditorId'   => $aid ? (string) $aid : null,
+		'assignedAuditorName' => $auditor ? (string) $auditor->display_name : null,
+		'assignedAt'          => tap_ops_iso( isset( $r['assigned_at'] ) ? $r['assigned_at'] : null ),
+		'paymentStatus'       => isset( $r['payment_status'] ) && '' !== $r['payment_status'] ? (string) $r['payment_status'] : 'None',
+		'projectValue'        => isset( $r['project_value'] ) && null !== $r['project_value'] ? (float) $r['project_value'] : null,
+		'progressStatus'      => isset( $r['progress_status'] ) && '' !== $r['progress_status'] ? (string) $r['progress_status'] : 'In progress',
 	);
 }
 
@@ -54,7 +87,7 @@ function tap_ops_get_customer_row( $id ) {
  *
  * @return array|WP_Error column => value
  */
-function tap_ops_customer_input( array $b, $partial ) {
+function tap_ops_customer_input( array $b, $partial, $current = null ) {
 	$data = array();
 	foreach ( tap_ops_customer_fields() as $key => $def ) {
 		if ( ! array_key_exists( $key, $b ) ) {
@@ -81,6 +114,61 @@ function tap_ops_customer_input( array $b, $partial ) {
 	if ( ! $partial && ! isset( $data['name'] ) ) {
 		return tap_ops_err( 422, 'validation', 'name is required.' );
 	}
+
+	// Operations tracking.
+	if ( array_key_exists( 'services', $b ) ) {
+		$list = tap_ops_string_list( $b['services'] );
+		if ( null === $list ) {
+			return tap_ops_err( 422, 'validation', 'services must be an array of strings.' );
+		}
+		$data['services'] = tap_ops_json_in( $list );
+	}
+	if ( array_key_exists( 'serviceDate', $b ) ) {
+		if ( null === $b['serviceDate'] || '' === $b['serviceDate'] ) {
+			$data['service_date'] = null;
+		} else {
+			$d = tap_ops_valid_date( $b['serviceDate'] );
+			if ( null === $d ) {
+				return tap_ops_err( 422, 'validation', 'serviceDate must be YYYY-MM-DD.' );
+			}
+			$data['service_date'] = $d;
+		}
+	}
+	if ( array_key_exists( 'paymentStatus', $b ) ) {
+		if ( ! in_array( $b['paymentStatus'], tap_ops_payment_statuses(), true ) ) {
+			return tap_ops_err( 422, 'validation', 'paymentStatus is invalid.' );
+		}
+		$data['payment_status'] = $b['paymentStatus'];
+	}
+	if ( array_key_exists( 'progressStatus', $b ) ) {
+		if ( ! in_array( $b['progressStatus'], tap_ops_progress_statuses(), true ) ) {
+			return tap_ops_err( 422, 'validation', 'progressStatus is invalid.' );
+		}
+		$data['progress_status'] = $b['progressStatus'];
+	}
+	if ( array_key_exists( 'projectValue', $b ) ) {
+		$m = tap_ops_money_in( $b['projectValue'] );
+		if ( false === $m ) {
+			return tap_ops_err( 422, 'validation', 'projectValue must be a non-negative number.' );
+		}
+		$data['project_value'] = $m;
+	}
+	if ( array_key_exists( 'assignedAuditorId', $b ) ) {
+		if ( null === $b['assignedAuditorId'] || '' === $b['assignedAuditorId'] ) {
+			$new_id = null;
+		} else {
+			$u = tap_ops_load_tap_user( $b['assignedAuditorId'] );
+			if ( ! $u ) {
+				return tap_ops_err( 422, 'validation', 'assignedAuditorId is not a TAP user.' );
+			}
+			$new_id = (int) $u->ID;
+		}
+		$old_id = $current && ! empty( $current['assigned_auditor_id'] ) ? (int) $current['assigned_auditor_id'] : null;
+		$data['assigned_auditor_id'] = $new_id;
+		if ( $new_id !== $old_id ) {
+			$data['assigned_at'] = null === $new_id ? null : tap_ops_now();
+		}
+	}
 	return $data;
 }
 
@@ -98,7 +186,7 @@ function tap_ops_h_customer_get( WP_REST_Request $request ) {
 
 function tap_ops_h_customer_create( WP_REST_Request $request ) {
 	global $wpdb;
-	$data = tap_ops_customer_input( tap_ops_body( $request ), false );
+	$data = tap_ops_customer_input( tap_ops_body( $request ), false, null );
 	if ( is_wp_error( $data ) ) {
 		return $data;
 	}
@@ -112,10 +200,11 @@ function tap_ops_h_customer_create( WP_REST_Request $request ) {
 function tap_ops_h_customer_patch( WP_REST_Request $request ) {
 	global $wpdb;
 	$id = tap_ops_int_id( $request['id'] );
-	if ( ! tap_ops_get_customer_row( $id ) ) {
+	$current = tap_ops_get_customer_row( $id );
+	if ( ! $current ) {
 		return tap_ops_err( 404, 'not_found', 'Customer not found.' );
 	}
-	$data = tap_ops_customer_input( tap_ops_body( $request ), true );
+	$data = tap_ops_customer_input( tap_ops_body( $request ), true, $current );
 	if ( is_wp_error( $data ) ) {
 		return $data;
 	}

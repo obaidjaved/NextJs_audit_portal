@@ -33,6 +33,10 @@ function tap_ops_request_out( array $r ) {
 		'customerId'     => tap_ops_id_out( $r['customer_id'] ),
 		'createdAt'      => tap_ops_iso( $r['created_at'] ),
 		'source'         => (string) $r['source'],
+		'leadStatus'     => isset( $r['lead_status'] ) && '' !== $r['lead_status'] ? (string) $r['lead_status'] : 'New',
+		'paymentStatus'  => isset( $r['payment_status'] ) && '' !== $r['payment_status'] ? (string) $r['payment_status'] : 'None',
+		'budgetQuote'    => isset( $r['budget_quote'] ) && null !== $r['budget_quote'] ? (float) $r['budget_quote'] : null,
+		'amountPaid'     => isset( $r['amount_paid'] ) ? (float) $r['amount_paid'] : 0.0,
 	);
 }
 
@@ -164,6 +168,54 @@ function tap_ops_h_request_create( WP_REST_Request $request ) {
 	return tap_ops_create_request( tap_ops_body( $request ), true, 'api' );
 }
 
+/** Staff edits to a lead from the dashboard: status, payment, quote, date. */
+function tap_ops_h_request_patch( WP_REST_Request $request ) {
+	global $wpdb;
+	$id = tap_ops_int_id( $request['id'] );
+	if ( ! tap_ops_get_request_row( $id ) ) {
+		return tap_ops_err( 404, 'not_found', 'Request not found.' );
+	}
+	$b = tap_ops_body( $request );
+	$d = array();
+	if ( array_key_exists( 'leadStatus', $b ) ) {
+		if ( ! in_array( $b['leadStatus'], tap_ops_lead_statuses(), true ) ) {
+			return tap_ops_err( 422, 'validation', 'leadStatus is invalid.' );
+		}
+		$d['lead_status'] = $b['leadStatus'];
+	}
+	if ( array_key_exists( 'paymentStatus', $b ) ) {
+		if ( ! in_array( $b['paymentStatus'], tap_ops_payment_statuses(), true ) ) {
+			return tap_ops_err( 422, 'validation', 'paymentStatus is invalid.' );
+		}
+		$d['payment_status'] = $b['paymentStatus'];
+	}
+	if ( array_key_exists( 'budgetQuote', $b ) ) {
+		$m = tap_ops_money_in( $b['budgetQuote'] );
+		if ( false === $m ) {
+			return tap_ops_err( 422, 'validation', 'budgetQuote must be a non-negative number.' );
+		}
+		$d['budget_quote'] = $m;
+	}
+	if ( array_key_exists( 'amountPaid', $b ) ) {
+		$m = tap_ops_money_in( $b['amountPaid'] );
+		if ( false === $m ) {
+			return tap_ops_err( 422, 'validation', 'amountPaid must be a non-negative number.' );
+		}
+		$d['amount_paid'] = null === $m ? 0 : $m;
+	}
+	if ( array_key_exists( 'dateNeeded', $b ) ) {
+		$v = tap_ops_valid_date( $b['dateNeeded'] );
+		if ( null === $v ) {
+			return tap_ops_err( 422, 'validation', 'dateNeeded must be YYYY-MM-DD.' );
+		}
+		$d['date_needed'] = $v;
+	}
+	if ( $d ) {
+		$wpdb->update( tap_ops_t( 'requests' ), $d, array( 'id' => $id ) );
+	}
+	return tap_ops_request_out( tap_ops_get_request_row( $id ) );
+}
+
 function tap_ops_h_requests_list() {
 	global $wpdb;
 	$t = tap_ops_t( 'requests' );
@@ -185,8 +237,9 @@ function tap_ops_claim_request( $id, $status, $note = null ) {
 	$actor = tap_ops_actor();
 	$n     = $wpdb->query(
 		$wpdb->prepare(
-			"UPDATE $t SET status = %s, reviewed_by_id = %d, reviewed_by_name = %s, reviewed_at = %s, review_note = %s WHERE id = %d AND status = 'PENDING'", // phpcs:ignore
+			"UPDATE $t SET status = %s, lead_status = %s, reviewed_by_id = %d, reviewed_by_name = %s, reviewed_at = %s, review_note = %s WHERE id = %d AND status = 'PENDING'", // phpcs:ignore
 			$status,
+			'APPROVED' === $status ? 'Converted' : 'Not Interested',
 			$actor ? (int) $actor->ID : 0,
 			$actor ? (string) $actor->display_name : '',
 			tap_ops_now(),
@@ -227,12 +280,16 @@ function tap_ops_h_request_approve( WP_REST_Request $request ) {
 			'contact'    => $nn( $contact ),
 			'email'      => $nn( $row['email'] ),
 			'phone'      => $nn( $row['phone'] ),
-			'created_at' => tap_ops_now(),
+			'services'       => $row['services'],
+			'service_date'   => $nn( tap_ops_date_out( $row['date_needed'] ) ),
+			'payment_status' => '' !== (string) $row['payment_status'] ? $row['payment_status'] : 'None',
+			'project_value'  => $row['budget_quote'],
+			'created_at'     => tap_ops_now(),
 		)
 	);
 	if ( false === $ok ) {
 		// Roll the claim back so the request can be retried.
-		$wpdb->update( tap_ops_t( 'requests' ), array( 'status' => 'PENDING', 'reviewed_by_id' => null, 'reviewed_by_name' => null, 'reviewed_at' => null ), array( 'id' => $id ) );
+		$wpdb->update( tap_ops_t( 'requests' ), array( 'status' => 'PENDING', 'lead_status' => $row['lead_status'], 'reviewed_by_id' => null, 'reviewed_by_name' => null, 'reviewed_at' => null ), array( 'id' => $id ) );
 		return tap_ops_err( 500, 'db_error', 'Could not create the customer.' );
 	}
 	$cid = (int) $wpdb->insert_id;

@@ -40,8 +40,20 @@ export interface Customer {
   email: string | null;
   phone: string | null;
   createdAt: Date;
+  // Operations tracking (customers dashboard)
+  services: string[];
+  serviceDate: string | null; // YYYY-MM-DD — when the service is required
+  assignedAuditorId: string | null;
+  assignedAuditorName: string | null;
+  assignedAt: Date | null; // when it was assigned to the auditor
+  paymentStatus: string;
+  projectValue: number | null;
+  progressStatus: string;
 }
-export type CustomerInput = Partial<Omit<Customer, "id" | "createdAt">> & { name: string };
+// The contact details of a customer, as embedded in an audit.
+export type CustomerBrief = Pick<Customer, "id" | "name" | "site" | "city" | "state" | "zip" | "contact" | "email" | "phone" | "createdAt">;
+// assignedAt / assignedAuditorName are filled in by the backend.
+export type CustomerInput = Partial<Omit<Customer, "id" | "createdAt" | "assignedAuditorName" | "assignedAt">> & { name: string };
 
 export interface Template {
   id: string;
@@ -79,7 +91,7 @@ export interface Audit {
   shareToken: string | null;
   createdAt: Date;
   updatedAt: Date;
-  customer: Customer;
+  customer: CustomerBrief;
   template: Template;
   inspector: { id: string; name: string } | null;
 }
@@ -162,6 +174,19 @@ export interface CustomerRequest {
   reviewNote: string | null;
   customerId: string | null;
   createdAt: Date;
+  // Lead management (leads dashboard)
+  leadStatus: string;
+  paymentStatus: string;
+  budgetQuote: number | null;
+  amountPaid: number;
+}
+// What staff can change on a lead from the dashboard.
+export interface LeadPatch {
+  leadStatus?: string;
+  paymentStatus?: string;
+  budgetQuote?: number | null;
+  amountPaid?: number;
+  dateNeeded?: string;
 }
 export interface RequestInput {
   firstName: string;
@@ -239,6 +264,7 @@ export interface Backend {
     pendingCount(): Promise<number>;
     // `manual` = added by staff, so the backend accepts sparser details than the public form.
     create(data: RequestInput, opts?: { manual?: boolean }): Promise<CustomerRequest>;
+    update(id: string, patch: LeadPatch): Promise<void>;
     approve(id: string): Promise<{ customerId: string | null }>;
     reject(id: string, note?: string): Promise<void>;
   };

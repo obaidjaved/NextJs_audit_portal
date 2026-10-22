@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { requests as requestsRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
-import { RequestsPanel, type RequestRow } from "@/components/customers/RequestsPanel";
+import { LeadsTable, type LeadRow } from "@/components/leads/LeadsTable";
 
 export default async function LeadsPage() {
   const user = await requireUser();
   const rows = await requestsRepo.list();
 
-  const requests: RequestRow[] = rows.map((r) => ({
+  const leads: LeadRow[] = rows.map((r) => ({
     id: r.id,
     firstName: r.firstName,
     lastName: r.lastName,
@@ -21,7 +21,6 @@ export default async function LeadsPage() {
     phone: r.phone,
     email: r.email,
     services: r.services,
-    trainings: r.trainings,
     dateNeeded: r.dateNeeded,
     additionalInfo: r.additionalInfo,
     status: r.status,
@@ -30,6 +29,10 @@ export default async function LeadsPage() {
     reviewedBy: r.reviewedByName,
     reviewNote: r.reviewNote,
     customerId: r.customerId,
+    leadStatus: r.leadStatus,
+    paymentStatus: r.paymentStatus,
+    budgetQuote: r.budgetQuote,
+    amountPaid: r.amountPaid,
   }));
 
   return (
@@ -38,13 +41,13 @@ export default async function LeadsPage() {
         <div>
           <h1 className="disp" style={{ fontSize: 22, fontWeight: 800 }}>Leads</h1>
           <p style={{ color: "var(--ink-2)", fontSize: 13, marginTop: 4 }}>
-            Every request-a-quote submission, plus leads you add yourself. Approve a lead to turn it into a customer.
+            Every request-a-quote submission, plus leads you add yourself. Track each one, then approve it to turn it into a customer.
           </p>
         </div>
         <Link href="/leads/new" className="btn primary">+ Add lead</Link>
       </div>
 
-      <RequestsPanel requests={requests} canReview={user.role === "ADMIN"} />
+      <LeadsTable leads={leads} canReview={user.role === "ADMIN"} />
     </div>
   );
 }
