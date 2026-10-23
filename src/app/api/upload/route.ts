@@ -17,6 +17,8 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/webp": ".webp",
   "image/gif": ".gif",
   "image/heic": ".heic",
+  // Payment proofs can be an invoice PDF as well as a screenshot.
+  "application/pdf": ".pdf",
 };
 
 // Uses Vercel Blob when a Blob store is connected (production/preview).
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
 
   const ext = ALLOWED_TYPES[file.type];
   if (!ext) {
-    return NextResponse.json({ error: "Unsupported file type" }, { status: 415 });
+    return NextResponse.json({ error: "Unsupported file type (use an image or a PDF)" }, { status: 415 });
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "File too large (10MB max)" }, { status: 413 });

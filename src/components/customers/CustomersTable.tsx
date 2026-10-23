@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import { updateCustomerOps } from "@/lib/actions/ops";
-import { PAYMENT_STATUSES, PROGRESS_STATUSES } from "@/lib/ops-options";
-import { InlineDate, InlineMoney, InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, ContactCell, fmtDate } from "@/components/ops/Parts";
-import { ServicePicker } from "@/components/ops/ServicePicker";
+import { PROGRESS_STATUSES, money } from "@/lib/ops-options";
+import { InlineSelect } from "@/components/ops/Inline";
+import { CallEmail, ContactCell, PaymentPill, ServiceChips } from "@/components/ops/Parts";
+import { CustomerDetails } from "./CustomerDetails";
 
 export interface CustomerOpsRow {
   id: string;
@@ -14,6 +13,10 @@ export interface CustomerOpsRow {
   contact: string | null; // "First Last, Title"
   email: string | null;
   phone: string | null;
+  site: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
   services: string[];
   serviceDate: string | null;
   assignedAuditorId: string | null;
@@ -22,27 +25,22 @@ export interface CustomerOpsRow {
   paymentStatus: string;
   projectValue: number | null;
   progressStatus: string;
+  paymentProofs: string[];
   // The newest finished audit, shown as the "Final report".
   finalReportId: string | null;
   finalReportDoc: string | null;
 }
 
-// Header label + column width (px). The table uses fixed widths so every column lines up.
-const COLS: [string, number][] = [
-  ["Customer", 240],
-  ["Service type", 170],
-  ["Sub service", 250],
-  ["Service required by", 170],
-  ["Assigned auditor", 170],
-  ["Date assigned", 130],
-  ["Payment status", 150],
-  ["Project value", 140],
-  ["Final report", 130],
-  ["Progress", 160],
-  ["Contact", 130],
-  ["", 90],
+// Header label + column width (% of the table). Only the important columns live
+// here; everything else is in the Details popup.
+const COLS: [string, string][] = [
+  ["Customer", "29%"],
+  ["Service", "21%"],
+  ["Auditor", "14%"],
+  ["Progress", "17%"],
+  ["Value", "8%"],
+  ["", "11%"],
 ];
-const TABLE_WIDTH = COLS.reduce((n, [, w]) => n + w, 0);
 
 // "First Last, Title" -> name + title
 function splitContact(contact: string | null): { name: string; title: string | null } {
@@ -62,6 +60,7 @@ export function CustomersTable({
 }) {
   const [search, setSearch] = useState("");
   const [progress, setProgress] = useState("All");
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -72,45 +71,44 @@ export function CustomersTable({
     });
   }, [customers, search, progress]);
 
+  const open = customers.find((c) => c.id === openId) ?? null;
+
   function cells(c: CustomerOpsRow) {
     const { name, title } = splitContact(c.contact);
-    const auditorOptions = [{ value: "", label: "Unassigned" }, ...auditors.map((a) => ({ value: a.id, label: a.name }))];
     return {
       contact: <ContactCell name={name} title={title} company={c.name} email={c.email} phone={c.phone} />,
-      type: <ServicePicker label="Service type" kind="type" services={c.services} onSave={(s) => updateCustomerOps(c.id, { services: s })} />,
-      sub: <ServicePicker label="Sub service" kind="sub" services={c.services} onSave={(s) => updateCustomerOps(c.id, { services: s })} />,
-      required: <InlineDate label="Date of service required" value={c.serviceDate} onSave={(v) => updateCustomerOps(c.id, { serviceDate: v })} />,
-      auditor: canAssign ? (
-        <InlineSelect label="Assigned auditor" value={c.assignedAuditorId ?? ""} options={auditorOptions} onSave={(v) => updateCustomerOps(c.id, { assignedAuditorId: v || null })} />
-      ) : (
-        <span>{c.assignedAuditorName ?? "Unassigned"}</span>
+      service: (
+        <div>
+          <ServiceChips services={c.services} kind="type" />
+          {c.services.length > 0 && (
+            <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 4 }}>
+              {c.services.length} sub service{c.services.length === 1 ? "" : "s"}
+            </div>
+          )}
+        </div>
       ),
-      assigned: c.assignedAuditorId ? fmtDate(c.assignedAt) : "—",
-      payment: <InlineSelect label="Payment status" value={c.paymentStatus} options={PAYMENT_STATUSES} onSave={(v) => updateCustomerOps(c.id, { paymentStatus: v })} />,
-      value: <InlineMoney label="Project value" value={c.projectValue} onSave={(v) => updateCustomerOps(c.id, { projectValue: v })} />,
-      report: c.finalReportId ? (
-        <Link href={`/audits/${c.finalReportId}`} className="btn ghost sm" style={{ height: 34 }}>
-          View report
-        </Link>
+      auditor: c.assignedAuditorName ? (
+        <span style={{ fontWeight: 600 }}>{c.assignedAuditorName}</span>
       ) : (
-        <span style={{ color: "var(--ink-3)" }}>Not ready</span>
+        <span className="pill warn" style={{ textTransform: "none", letterSpacing: 0 }}>Unassigned</span>
       ),
-      progress: <InlineSelect label="Progress status" value={c.progressStatus} options={PROGRESS_STATUSES} onSave={(v) => updateCustomerOps(c.id, { progressStatus: v })} />,
-      call: <CallEmail email={c.email} phone={c.phone} />,
-      open: (
-        <Link href={`/customers?customerId=${c.id}`} className="btn ghost sm">
-          Open
-        </Link>
+      progress: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+          <InlineSelect label="Progress status" value={c.progressStatus} options={PROGRESS_STATUSES} onSave={(v) => updateCustomerOps(c.id, { progressStatus: v })} />
+          <PaymentPill status={c.paymentStatus} />
+        </div>
+      ),
+      value: <span style={{ fontWeight: 600 }}>{money(c.projectValue)}</span>,
+      actions: (
+        <div className="dt-row-actions">
+          <CallEmail compact email={c.email} phone={c.phone} />
+          <button type="button" className="btn ghost sm" onClick={() => setOpenId(c.id)}>
+            Details
+          </button>
+        </div>
       ),
     };
   }
-
-  const Field = ({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) => (
-    <div className={wide ? "dt-wide" : undefined}>
-      <div className="dt-field-label">{label}</div>
-      <div>{children}</div>
-    </div>
-  );
 
   return (
     <div>
@@ -133,12 +131,12 @@ export function CustomersTable({
 
       {shown.length === 0 ? (
         <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
-          {customers.length === 0 ? "No customers yet. Add one with “+ New Customer”, or approve a lead." : "No customers match this filter."}
+          {customers.length === 0 ? "No customers yet. Add one with “+ New Customer”, or convert a lead." : "No customers match this filter."}
         </div>
       ) : (
         <>
           <div className="dt-wrap">
-            <table className="dt" style={{ width: TABLE_WIDTH }}>
+            <table className="dt">
               <colgroup>
                 {COLS.map(([, w], i) => (
                   <col key={i} style={{ width: w }} />
@@ -157,17 +155,11 @@ export function CustomersTable({
                   return (
                     <tr key={cu.id}>
                       <td>{c.contact}</td>
-                      <td>{c.type}</td>
-                      <td>{c.sub}</td>
-                      <td>{c.required}</td>
+                      <td>{c.service}</td>
                       <td>{c.auditor}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>{c.assigned}</td>
-                      <td>{c.payment}</td>
-                      <td>{c.value}</td>
-                      <td>{c.report}</td>
                       <td>{c.progress}</td>
-                      <td>{c.call}</td>
-                      <td>{c.open}</td>
+                      <td>{c.value}</td>
+                      <td>{c.actions}</td>
                     </tr>
                   );
                 })}
@@ -182,24 +174,37 @@ export function CustomersTable({
                 <div key={cu.id} className="card dt-card">
                   {c.contact}
                   <div className="dt-card-grid">
-                    <Field label="Service type" wide>{c.type}</Field>
-                    <Field label="Sub service" wide>{c.sub}</Field>
-                    <Field label="Service required by">{c.required}</Field>
-                    <Field label="Progress">{c.progress}</Field>
-                    <Field label="Assigned auditor">{c.auditor}</Field>
-                    <Field label="Date assigned">{c.assigned}</Field>
-                    <Field label="Payment status">{c.payment}</Field>
-                    <Field label="Project value">{c.value}</Field>
-                    <Field label="Final report" wide>{c.report}</Field>
+                    <div className="dt-wide">
+                      <div className="dt-field-label">Service</div>
+                      {c.service}
+                    </div>
+                    <div>
+                      <div className="dt-field-label">Auditor</div>
+                      {c.auditor}
+                    </div>
+                    <div>
+                      <div className="dt-field-label">Value</div>
+                      {c.value}
+                    </div>
+                    <div className="dt-wide">
+                      <div className="dt-field-label">Progress</div>
+                      {c.progress}
+                    </div>
                   </div>
-                  {c.call}
-                  {c.open}
+                  <div className="dt-row-actions">
+                    <CallEmail compact email={cu.email} phone={cu.phone} />
+                    <button type="button" className="btn ghost sm" style={{ flex: 1 }} onClick={() => setOpenId(cu.id)}>
+                      Details
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         </>
       )}
+
+      {open && <CustomerDetails customer={open} auditors={auditors} canAssign={canAssign} onClose={() => setOpenId(null)} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createLead, submitQuoteRequest } from "@/lib/actions/quote-requests";
+import { unwrap } from "@/lib/actions/result";
 import { SERVICE_GROUPS, US_STATES } from "@/lib/quote-options";
 
 const LABEL = { display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)" } as const;
@@ -62,11 +63,11 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
     startTransition(async () => {
       try {
         if (internal) {
-          await createLead({ ...f, services });
+          unwrap(await createLead({ ...f, services }));
           router.push("/leads");
           return;
         }
-        await submitQuoteRequest({ ...f, services });
+        unwrap(await submitQuoteRequest({ ...f, services }));
         setDone(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (err) {

@@ -90,6 +90,7 @@ model Customer {
   paymentStatus     String    @default("None") // None | Partial | Full Payment
   projectValue      Float?
   progressStatus    String    @default("In progress") // In progress | Rescheduled | Completed
+  paymentProofs     Json      @default("[]") // string[] — copied from the lead it came from
 
   audits    Audit[]
   schedules Schedule[]
@@ -247,6 +248,7 @@ model CustomerRequest {
   paymentStatus String @default("None") // None | Partial | Full Payment
   budgetQuote   Float?
   amountPaid    Float  @default(0)
+  paymentProofs Json   @default("[]") // string[] — transfer screenshots / invoices; at least one is needed to convert
 
   @@index([status])
 }

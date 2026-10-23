@@ -1,14 +1,11 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition, type ReactNode } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { approveQuoteRequest, rejectQuoteRequest } from "@/lib/actions/quote-requests";
+import { useMemo, useState } from "react";
 import { updateLead } from "@/lib/actions/ops";
-import { LEAD_STATUSES, PAYMENT_STATUSES, money } from "@/lib/ops-options";
-import { InlineDate, InlineMoney, InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, ContactCell, fmtDate } from "@/components/ops/Parts";
-import { ServicePicker } from "@/components/ops/ServicePicker";
+import { LEAD_STATUSES } from "@/lib/ops-options";
+import { InlineSelect } from "@/components/ops/Inline";
+import { CallEmail, ContactCell, PaymentPill, ServiceChips, fmtDate } from "@/components/ops/Parts";
+import { LeadDetails } from "./LeadDetails";
 
 export interface LeadRow {
   id: string;
@@ -36,107 +33,23 @@ export interface LeadRow {
   paymentStatus: string;
   budgetQuote: number | null;
   amountPaid: number;
+  paymentProofs: string[];
 }
 
-// Header label + column width (px). The table uses fixed widths so every column lines up.
-const COLS: [string, number][] = [
-  ["Lead", 240],
-  ["Date of lead", 120],
-  ["Location", 140],
-  ["Service type", 170],
-  ["Sub service", 250],
-  ["Service required by", 170],
-  ["Payment status", 150],
-  ["Budget quote", 140],
-  ["Record payment", 150],
-  ["Lead status", 160],
-  ["Contact", 130],
-  ["", 100],
+// Header label + column width (% of the table). Only the important columns live
+// here; everything else is in the Details popup.
+const COLS: [string, string][] = [
+  ["Lead", "31%"],
+  ["Service", "23%"],
+  ["Status", "19%"],
+  ["Date of lead", "12%"],
+  ["", "15%"],
 ];
-const TABLE_WIDTH = COLS.reduce((n, [, w]) => n + w, 0);
-
-function LeadDetails({ l, canReview }: { l: LeadRow; canReview: boolean }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function approve() {
-    if (!confirm(`Approve ${l.companyName} and add it to your customers?`)) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        const res = await approveQuoteRequest(l.id);
-        router.push(res?.customerId ? `/customers?customerId=${res.customerId}` : "/customers");
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to approve.");
-      }
-    });
-  }
-
-  function reject() {
-    const note = prompt(`Reject ${l.companyName}? Optionally add a note for your records:`);
-    if (note === null) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await rejectQuoteRequest(l.id, note);
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to reject.");
-      }
-    });
-  }
-
-  const address = [l.street, l.street2, [l.city, l.state].filter(Boolean).join(", "), l.zip].filter(Boolean).join(", ");
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 13, opacity: pending ? 0.6 : 1 }}>
-      <div>
-        <div className="dt-field-label">Address</div>
-        {address || "—"}
-      </div>
-      {l.additionalInfo && (
-        <div>
-          <div className="dt-field-label">Additional info</div>
-          <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{l.additionalInfo}</p>
-        </div>
-      )}
-      {l.status !== "PENDING" && (
-        <p style={{ color: "var(--ink-2)" }}>
-          {l.status === "APPROVED" ? "Approved" : "Rejected"}
-          {l.reviewedBy && ` by ${l.reviewedBy}`}
-          {l.reviewedAt && ` on ${fmtDate(l.reviewedAt)}`}
-          {l.reviewNote && ` — “${l.reviewNote}”`}
-          {l.status === "APPROVED" && l.customerId && (
-            <>
-              {" · "}
-              <Link href={`/customers?customerId=${l.customerId}`} style={{ textDecoration: "underline", fontWeight: 700 }}>Open customer</Link>
-            </>
-          )}
-        </p>
-      )}
-      {l.status === "PENDING" &&
-        (canReview ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="btn primary sm" disabled={pending} onClick={approve}>
-              {pending ? "Working…" : "Approve & add customer"}
-            </button>
-            <button type="button" className="btn ghost sm" disabled={pending} onClick={reject}>Reject</button>
-          </div>
-        ) : (
-          <p style={{ color: "var(--ink-2)" }}>Only an administrator can approve or reject leads.</p>
-        ))}
-      {error && <p role="alert" style={{ color: "var(--danger)" }}>{error}</p>}
-    </div>
-  );
-}
 
 export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: boolean }) {
-  const router = useRouter();
   const [filter, setFilter] = useState<string>("All");
   const [search, setSearch] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -153,52 +66,45 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
     return m;
   }, [leads]);
 
-  // "Converted" is only reachable by approving a pending lead; everything else is a plain edit.
-  async function saveStatus(l: LeadRow, value: string) {
-    if (value === "Converted") {
-      if (!confirm(`Approve ${l.companyName} and add it to your customers?`)) return;
-      const res = await approveQuoteRequest(l.id);
-      router.push(res?.customerId ? `/customers?customerId=${res.customerId}` : "/customers");
-      return;
-    }
-    await updateLead(l.id, { leadStatus: value });
-  }
+  const open = leads.find((l) => l.id === openId) ?? null;
 
   function cells(l: LeadRow) {
     const locked = l.status !== "PENDING";
-    const statusOptions = l.status === "PENDING" && canReview ? LEAD_STATUSES : LEAD_STATUSES.filter((s) => s !== "Converted");
-    const balance = l.budgetQuote !== null ? Math.max(l.budgetQuote - l.amountPaid, 0) : null;
     return {
       contact: <ContactCell name={`${l.firstName} ${l.lastName}`.trim()} title={l.title} company={l.companyName} email={l.email} phone={l.phone} />,
-      date: fmtDate(l.createdAt),
-      location: [l.city, l.state].filter(Boolean).join(", ") || "—",
-      type: <ServicePicker label="Service type" kind="type" services={l.services} requireOne onSave={(s) => updateLead(l.id, { services: s })} />,
-      sub: <ServicePicker label="Sub service" kind="sub" services={l.services} requireOne onSave={(s) => updateLead(l.id, { services: s })} />,
-      required: <InlineDate label="Date of service required" value={l.dateNeeded} onSave={(v) => updateLead(l.id, { dateNeeded: v ?? l.dateNeeded })} />,
-      payment: <InlineSelect label="Payment status" value={l.paymentStatus} options={PAYMENT_STATUSES} onSave={(v) => updateLead(l.id, { paymentStatus: v })} />,
-      quote: <InlineMoney label="Budget quote" value={l.budgetQuote} onSave={(v) => updateLead(l.id, { budgetQuote: v })} />,
-      paid: (
+      service: (
         <div>
-          <InlineMoney label="Amount paid" value={l.amountPaid} nullable={false} onSave={(v) => updateLead(l.id, { amountPaid: v ?? 0 })} />
-          {balance !== null && <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 4 }}>Balance {money(balance)}</div>}
+          <ServiceChips services={l.services} kind="type" />
+          {l.services.length > 0 && (
+            <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 4 }}>
+              {l.services.length} sub service{l.services.length === 1 ? "" : "s"}
+            </div>
+          )}
         </div>
       ),
-      status: <InlineSelect label="Lead status" value={l.leadStatus} options={statusOptions} disabled={locked} onSave={(v) => saveStatus(l, v)} />,
-      call: <CallEmail email={l.email} phone={l.phone} />,
-      toggle: (
-        <button type="button" className="btn ghost sm" aria-expanded={open === l.id} onClick={() => setOpen(open === l.id ? null : l.id)}>
-          {open === l.id ? "Hide" : l.status === "PENDING" ? "Review" : "Details"}
-        </button>
+      status: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+          <InlineSelect
+            label="Lead status"
+            value={l.leadStatus}
+            options={LEAD_STATUSES.filter((s) => s !== "Converted" || l.leadStatus === "Converted")}
+            disabled={locked}
+            onSave={(v) => updateLead(l.id, { leadStatus: v })}
+          />
+          <PaymentPill status={l.paymentStatus} />
+        </div>
+      ),
+      date: fmtDate(l.createdAt),
+      actions: (
+        <div className="dt-row-actions">
+          <CallEmail compact email={l.email} phone={l.phone} />
+          <button type="button" className="btn ghost sm" onClick={() => setOpenId(l.id)}>
+            Details
+          </button>
+        </div>
       ),
     };
   }
-
-  const Field = ({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) => (
-    <div className={wide ? "dt-wide" : undefined}>
-      <div className="dt-field-label">{label}</div>
-      <div>{children}</div>
-    </div>
-  );
 
   return (
     <div>
@@ -229,7 +135,7 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
       ) : (
         <>
           <div className="dt-wrap">
-            <table className="dt" style={{ width: TABLE_WIDTH }}>
+            <table className="dt">
               <colgroup>
                 {COLS.map(([, w], i) => (
                   <col key={i} style={{ width: w }} />
@@ -246,29 +152,13 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
                 {shown.map((l) => {
                   const c = cells(l);
                   return (
-                    <Fragment key={l.id}>
-                      <tr>
-                        <td>{c.contact}</td>
-                        <td style={{ whiteSpace: "nowrap" }}>{c.date}</td>
-                        <td>{c.location}</td>
-                        <td>{c.type}</td>
-                        <td>{c.sub}</td>
-                        <td>{c.required}</td>
-                        <td>{c.payment}</td>
-                        <td>{c.quote}</td>
-                        <td>{c.paid}</td>
-                        <td>{c.status}</td>
-                        <td>{c.call}</td>
-                        <td>{c.toggle}</td>
-                      </tr>
-                      {open === l.id && (
-                        <tr className="dt-detail">
-                          <td colSpan={COLS.length}>
-                            <LeadDetails l={l} canReview={canReview} />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
+                    <tr key={l.id}>
+                      <td>{c.contact}</td>
+                      <td>{c.service}</td>
+                      <td>{c.status}</td>
+                      <td>{c.date}</td>
+                      <td>{c.actions}</td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -282,29 +172,33 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
                 <div key={l.id} className="card dt-card">
                   {c.contact}
                   <div className="dt-card-grid">
-                    <Field label="Date of lead">{c.date}</Field>
-                    <Field label="Location">{c.location}</Field>
-                    <Field label="Service type" wide>{c.type}</Field>
-                    <Field label="Sub service" wide>{c.sub}</Field>
-                    <Field label="Service required by">{c.required}</Field>
-                    <Field label="Lead status">{c.status}</Field>
-                    <Field label="Payment status">{c.payment}</Field>
-                    <Field label="Budget quote">{c.quote}</Field>
-                    <Field label="Record payment" wide>{c.paid}</Field>
-                  </div>
-                  {c.call}
-                  {c.toggle}
-                  {open === l.id && (
-                    <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 12 }}>
-                      <LeadDetails l={l} canReview={canReview} />
+                    <div className="dt-wide">
+                      <div className="dt-field-label">Service</div>
+                      {c.service}
                     </div>
-                  )}
+                    <div>
+                      <div className="dt-field-label">Status</div>
+                      {c.status}
+                    </div>
+                    <div>
+                      <div className="dt-field-label">Date of lead</div>
+                      {c.date}
+                    </div>
+                  </div>
+                  <div className="dt-row-actions">
+                    <CallEmail compact email={l.email} phone={l.phone} />
+                    <button type="button" className="btn ghost sm" style={{ flex: 1 }} onClick={() => setOpenId(l.id)}>
+                      Details
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         </>
       )}
+
+      {open && <LeadDetails lead={open} canReview={canReview} onClose={() => setOpenId(null)} />}
     </div>
   );
 }

@@ -56,6 +56,7 @@ async function CustomersView({ isAdmin }: { isAdmin: boolean }) {
           paymentStatus: c.paymentStatus,
           projectValue: c.projectValue,
           progressStatus: c.progressStatus,
+          paymentProofs: c.paymentProofs,
         }))}
         audits={audits.map((a) => ({
           id: a.id,

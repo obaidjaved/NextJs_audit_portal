@@ -36,6 +36,7 @@ function tap_ops_install_schema() {
   payment_status varchar(30) NOT NULL DEFAULT 'None',
   project_value decimal(12,2) DEFAULT NULL,
   progress_status varchar(30) NOT NULL DEFAULT 'In progress',
+  payment_proofs longtext,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY name (name)
@@ -155,6 +156,7 @@ function tap_ops_install_schema() {
   payment_status varchar(30) NOT NULL DEFAULT 'None',
   budget_quote decimal(12,2) DEFAULT NULL,
   amount_paid decimal(12,2) NOT NULL DEFAULT 0,
+  payment_proofs longtext,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY status (status)

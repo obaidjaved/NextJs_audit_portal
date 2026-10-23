@@ -49,6 +49,7 @@ export interface Customer {
   paymentStatus: string;
   projectValue: number | null;
   progressStatus: string;
+  paymentProofs: string[]; // transfer screenshots / invoices (URLs or data URLs)
 }
 // The contact details of a customer, as embedded in an audit.
 export type CustomerBrief = Pick<Customer, "id" | "name" | "site" | "city" | "state" | "zip" | "contact" | "email" | "phone" | "createdAt">;
@@ -179,9 +180,11 @@ export interface CustomerRequest {
   paymentStatus: string;
   budgetQuote: number | null;
   amountPaid: number;
+  paymentProofs: string[];
 }
 // What staff can change on a lead from the dashboard.
 export interface LeadPatch {
+  paymentProofs?: string[];
   services?: string[];
   leadStatus?: string;
   paymentStatus?: string;

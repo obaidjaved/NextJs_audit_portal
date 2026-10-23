@@ -33,6 +33,28 @@ function tap_ops_progress_statuses() {
 	return array( 'In progress', 'Rescheduled', 'Completed' );
 }
 
+/**
+ * Payment proofs (transfer screenshots / invoices): up to 10 strings, each an https URL, an
+ * uploaded-file path or an image/PDF data URL. Returns the clean list, or null if the value is malformed.
+ */
+function tap_ops_proof_list( $value ) {
+	if ( ! is_array( $value ) || count( $value ) > 10 ) {
+		return null;
+	}
+	$out = array();
+	foreach ( $value as $v ) {
+		if ( ! is_string( $v ) || strlen( $v ) > 3000000 ) {
+			return null;
+		}
+		$ok = 0 === strpos( $v, 'https://' ) || 0 === strpos( $v, '/uploads/' ) || 0 === strpos( $v, 'data:image/' ) || 0 === strpos( $v, 'data:application/pdf' );
+		if ( ! $ok ) {
+			return null;
+		}
+		$out[] = $v;
+	}
+	return array_values( array_unique( $out ) );
+}
+
 /** Money input: null/'' -> null, a non-negative number -> rounded float, anything else -> false. */
 function tap_ops_money_in( $value ) {
 	if ( null === $value || '' === $value ) {
@@ -66,6 +88,7 @@ function tap_ops_customer_out( array $r ) {
 		'paymentStatus'       => isset( $r['payment_status'] ) && '' !== $r['payment_status'] ? (string) $r['payment_status'] : 'None',
 		'projectValue'        => isset( $r['project_value'] ) && null !== $r['project_value'] ? (float) $r['project_value'] : null,
 		'progressStatus'      => isset( $r['progress_status'] ) && '' !== $r['progress_status'] ? (string) $r['progress_status'] : 'In progress',
+		'paymentProofs'       => array_values( (array) tap_ops_json_out( isset( $r['payment_proofs'] ) ? $r['payment_proofs'] : null, array() ) ),
 	);
 }
 
@@ -133,6 +156,13 @@ function tap_ops_customer_input( array $b, $partial, $current = null ) {
 			}
 			$data['service_date'] = $d;
 		}
+	}
+	if ( array_key_exists( 'paymentProofs', $b ) ) {
+		$proofs = tap_ops_proof_list( $b['paymentProofs'] );
+		if ( null === $proofs ) {
+			return tap_ops_err( 422, 'validation', 'paymentProofs must be up to 10 image/PDF links.' );
+		}
+		$data['payment_proofs'] = tap_ops_json_in( $proofs );
 	}
 	if ( array_key_exists( 'paymentStatus', $b ) ) {
 		if ( ! in_array( $b['paymentStatus'], tap_ops_payment_statuses(), true ) ) {

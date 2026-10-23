@@ -35,6 +35,7 @@ function customerOf(c: Record<string, unknown>): Customer {
     ...(c as unknown as Customer),
     createdAt: toDate(c.createdAt),
     services: asArr<string>(c.services),
+    paymentProofs: asArr<string>(c.paymentProofs),
     assignedAt: toDateOrNull(c.assignedAt),
   };
 }
@@ -59,6 +60,7 @@ function requestOf(r: Record<string, unknown>): CustomerRequest {
   return {
     ...(r as unknown as CustomerRequest),
     services: asArr<string>(r.services),
+    paymentProofs: asArr<string>(r.paymentProofs),
     trainings: asArr<string>(r.trainings),
     reviewedAt: toDateOrNull(r.reviewedAt),
     createdAt: toDate(r.createdAt),

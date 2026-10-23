@@ -33,6 +33,7 @@ export default async function LeadsPage() {
     paymentStatus: r.paymentStatus,
     budgetQuote: r.budgetQuote,
     amountPaid: r.amountPaid,
+    paymentProofs: r.paymentProofs,
   }));
 
   return (
@@ -41,7 +42,7 @@ export default async function LeadsPage() {
         <div>
           <h1 className="disp" style={{ fontSize: 22, fontWeight: 800 }}>Leads</h1>
           <p style={{ color: "var(--ink-2)", fontSize: 13, marginTop: 4 }}>
-            Every request-a-quote submission, plus leads you add yourself. Track each one, then approve it to turn it into a customer.
+            Every request-a-quote submission, plus leads you add yourself. Track each one; once the customer has paid, attach the proof and convert it into a customer.
           </p>
         </div>
         <Link href="/leads/new" className="btn primary">+ Add lead</Link>

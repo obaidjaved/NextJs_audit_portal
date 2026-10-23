@@ -43,7 +43,7 @@ User: `{ id, name, email, role: "ADMIN"|"INSPECTOR", active: bool, auditCount: i
 
 Customer: `{ id, name, site, city, state, zip, contact, email, phone, createdAt, services: string[], serviceDate: "YYYY-MM-DD"|null,
 assignedAuditorId, assignedAuditorName, assignedAt, paymentStatus: "None"|"Partial"|"Full Payment", projectValue: number|null,
-progressStatus: "In progress"|"Rescheduled"|"Completed" }` (strings or null unless noted).
+progressStatus: "In progress"|"Rescheduled"|"Completed", paymentProofs: string[] }` (strings or null unless noted).
 
 - `GET /customers` -> `Customer[]` ordered by name asc. `GET /customers/{id}` -> Customer.
 - `POST /customers` `{name (required), site?, city?, state?, zip?, contact?, email?, phone?}` -> Customer.
@@ -108,7 +108,7 @@ Request: `{ id, firstName, lastName, companyName, title, street, street2, city, 
 services: string[], trainings: string[], dateNeeded: "YYYY-MM-DD", additionalInfo, status: "PENDING"|"APPROVED"|"REJECTED",
 reviewedById, reviewedByName, reviewedAt, reviewNote, customerId, createdAt, source: string,
 leadStatus: "New"|"Contacted"|"In progress"|"Cold"|"Not Interested"|"Converted", paymentStatus: "None"|"Partial"|"Full Payment",
-budgetQuote: number|null, amountPaid: number }`
+budgetQuote: number|null, amountPaid: number, paymentProofs: string[] }`
 
 - `GET /requests` -> `Request[]` newest first (max 200). `GET /requests/pending-count` -> `{count:int}`.
 - `POST /requests` — **public intake**, requires the key but NOT a user. Same fields as Request (required: firstName,
@@ -117,7 +117,7 @@ budgetQuote: number|null, amountPaid: number }`
   creates the customer (name=companyName, site="street, street2", city, state, zip, contact="First Last, Title",
   email, phone), sets status APPROVED, reviewedBy/At, customerId.
 - `POST /requests/{id}/reject` (admin) `{note?}` -> `{ok:true}`; only while PENDING.
-- `PATCH /requests/{id}` (staff) `{services?, leadStatus?, paymentStatus?, budgetQuote?, amountPaid?, dateNeeded?}` -> Request. Approving sets
+- `PATCH /requests/{id}` (staff) `{paymentProofs?, services?, leadStatus?, paymentStatus?, budgetQuote?, amountPaid?, dateNeeded?}` -> Request. Approving sets
   leadStatus `Converted` and copies services, dateNeeded (as serviceDate), paymentStatus and budgetQuote (as projectValue) to the
   new customer; rejecting sets `Not Interested`. A request created with `source: "manual"` only needs name, company and phone or email.
 

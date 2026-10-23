@@ -27,6 +27,7 @@ export interface CustomerRow {
   paymentStatus: string;
   projectValue: number | null;
   progressStatus: string;
+  paymentProofs: string[];
 }
 
 export interface AuditRow {
@@ -155,6 +156,11 @@ export function CustomerSplitView({
           contact: c.contact,
           email: c.email,
           phone: c.phone,
+          site: c.site,
+          city: c.city,
+          state: c.state,
+          zip: c.zip,
+          paymentProofs: c.paymentProofs,
           services: c.services,
           serviceDate: c.serviceDate,
           assignedAuditorId: c.assignedAuditorId,

@@ -37,6 +37,7 @@ function tap_ops_request_out( array $r ) {
 		'paymentStatus'  => isset( $r['payment_status'] ) && '' !== $r['payment_status'] ? (string) $r['payment_status'] : 'None',
 		'budgetQuote'    => isset( $r['budget_quote'] ) && null !== $r['budget_quote'] ? (float) $r['budget_quote'] : null,
 		'amountPaid'     => isset( $r['amount_paid'] ) ? (float) $r['amount_paid'] : 0.0,
+		'paymentProofs'  => array_values( (array) tap_ops_json_out( isset( $r['payment_proofs'] ) ? $r['payment_proofs'] : null, array() ) ),
 	);
 }
 
@@ -177,6 +178,13 @@ function tap_ops_h_request_patch( WP_REST_Request $request ) {
 	}
 	$b = tap_ops_body( $request );
 	$d = array();
+	if ( array_key_exists( 'paymentProofs', $b ) ) {
+		$proofs = tap_ops_proof_list( $b['paymentProofs'] );
+		if ( null === $proofs ) {
+			return tap_ops_err( 422, 'validation', 'paymentProofs must be up to 10 image/PDF links.' );
+		}
+		$d['payment_proofs'] = tap_ops_json_in( $proofs );
+	}
 	if ( array_key_exists( 'services', $b ) ) {
 		$list = tap_ops_string_list( $b['services'] );
 		if ( null === $list ) {
@@ -291,6 +299,7 @@ function tap_ops_h_request_approve( WP_REST_Request $request ) {
 			'service_date'   => $nn( tap_ops_date_out( $row['date_needed'] ) ),
 			'payment_status' => '' !== (string) $row['payment_status'] ? $row['payment_status'] : 'None',
 			'project_value'  => $row['budget_quote'],
+			'payment_proofs' => $row['payment_proofs'],
 			'created_at'     => tap_ops_now(),
 		)
 	);

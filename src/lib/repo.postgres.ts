@@ -69,10 +69,11 @@ function actionOf(a: Prisma.CorrectiveActionGetPayload<{ include: { customer: { 
 const customerInclude = { assignedAuditor: { select: { name: true } } } as const;
 
 function customerOf(c: Prisma.CustomerGetPayload<{ include: typeof customerInclude }>): Customer {
-  const { assignedAuditor, serviceDate, services, ...rest } = c;
+  const { assignedAuditor, serviceDate, services, paymentProofs, ...rest } = c;
   return {
     ...rest,
     services: Array.isArray(services) ? (services as string[]) : [],
+    paymentProofs: Array.isArray(paymentProofs) ? (paymentProofs as string[]) : [],
     serviceDate: serviceDate ? dateOnlyStringUTC(serviceDate) : null,
     assignedAuditorName: assignedAuditor?.name ?? null,
   };
@@ -80,9 +81,10 @@ function customerOf(c: Prisma.CustomerGetPayload<{ include: typeof customerInclu
 
 // Translate the app-level customer fields into Prisma's column types.
 function customerData(data: Partial<CustomerInput>) {
-  const { services, serviceDate, ...rest } = data;
+  const { services, serviceDate, paymentProofs, ...rest } = data;
   return {
     ...rest,
+    ...(paymentProofs !== undefined ? { paymentProofs: paymentProofs as Prisma.InputJsonValue } : {}),
     ...(services !== undefined ? { services: services as Prisma.InputJsonValue } : {}),
     ...(serviceDate !== undefined ? { serviceDate: serviceDate ? parseDateOnlyUTC(serviceDate) : null } : {}),
   };
@@ -117,6 +119,7 @@ function requestOf(r: Prisma.CustomerRequestGetPayload<{ include: { reviewedBy: 
     paymentStatus: r.paymentStatus,
     budgetQuote: r.budgetQuote,
     amountPaid: r.amountPaid,
+    paymentProofs: Array.isArray(r.paymentProofs) ? (r.paymentProofs as string[]) : [],
   };
 }
 
@@ -388,11 +391,12 @@ const requests: Backend["requests"] = {
     return requestOf(r);
   },
   update: async (id, patch) => {
-    const { dateNeeded, services, ...rest } = patch;
+    const { dateNeeded, services, paymentProofs, ...rest } = patch;
     await prisma.customerRequest.update({
       where: { id },
       data: {
         ...rest,
+        ...(paymentProofs !== undefined ? { paymentProofs: paymentProofs as Prisma.InputJsonValue } : {}),
         ...(services !== undefined ? { services: services as Prisma.InputJsonValue } : {}),
         ...(dateNeeded ? { dateNeeded: parseDateOnlyUTC(dateNeeded) } : {}),
       },
@@ -424,6 +428,7 @@ const requests: Backend["requests"] = {
             serviceDate: req.dateNeeded,
             paymentStatus: req.paymentStatus,
             projectValue: req.budgetQuote,
+            paymentProofs: Array.isArray(req.paymentProofs) ? (req.paymentProofs as Prisma.InputJsonValue) : [],
           },
         },
       },

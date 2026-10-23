@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { SERVICE_GROUPS } from "@/lib/quote-options";
+import { unwrap } from "@/lib/actions/result";
 import { ServiceChips } from "./Parts";
 
 // The Service Type and Sub Service cells. Both show what's chosen and open the
@@ -56,7 +57,7 @@ export function ServicePicker({
     setError(null);
     startTransition(async () => {
       try {
-        await onSave(draft);
+        unwrap(await onSave(draft));
         dialogRef.current?.close();
         router.refresh();
       } catch (err) {

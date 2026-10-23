@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { unwrap } from "@/lib/actions/result";
 
 // Small editable cells for the dashboards. Each saves on change/blur through
 // the `save` callback (a server action) and shows its own error underneath.
@@ -14,7 +15,7 @@ function useSave(save: (value: never) => Promise<unknown>) {
     setError(null);
     startTransition(async () => {
       try {
-        await save(value as never);
+        unwrap(await save(value as never));
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Couldn't save.");

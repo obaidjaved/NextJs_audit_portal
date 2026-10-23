@@ -1,3 +1,4 @@
+import { Mail, Phone } from "lucide-react";
 import { serviceTypesOf } from "@/lib/ops-options";
 
 // Name / Title | Company / Email / Phone, stacked — the first column of both dashboards.
@@ -24,18 +25,37 @@ export function ContactCell({
   );
 }
 
-export function CallEmail({ email, phone }: { email?: string | null; phone?: string | null }) {
+const DISABLED = { opacity: 0.45, cursor: "not-allowed" } as const;
+
+// "Call Now" and "Email". `compact` = round icon buttons for table rows.
+export function CallEmail({ email, phone, compact }: { email?: string | null; phone?: string | null; compact?: boolean }) {
+  if (compact) {
+    return (
+      <>
+        {phone ? (
+          <a className="dt-icon-btn" href={`tel:${phone}`} aria-label="Call now" title="Call now"><Phone size={15} /></a>
+        ) : (
+          <span className="dt-icon-btn" aria-disabled="true" style={DISABLED}><Phone size={15} /></span>
+        )}
+        {email ? (
+          <a className="dt-icon-btn" href={`mailto:${email}`} aria-label="Email" title="Email"><Mail size={15} /></a>
+        ) : (
+          <span className="dt-icon-btn" aria-disabled="true" style={DISABLED}><Mail size={15} /></span>
+        )}
+      </>
+    );
+  }
   return (
     <div className="dt-actions">
       {phone ? (
         <a className="btn primary sm" href={`tel:${phone}`}>Call Now</a>
       ) : (
-        <span className="btn ghost sm" aria-disabled="true" style={{ opacity: 0.45, cursor: "not-allowed" }}>Call Now</span>
+        <span className="btn ghost sm" aria-disabled="true" style={DISABLED}>Call Now</span>
       )}
       {email ? (
         <a className="btn ghost sm" href={`mailto:${email}`}>Email</a>
       ) : (
-        <span className="btn ghost sm" aria-disabled="true" style={{ opacity: 0.45, cursor: "not-allowed" }}>Email</span>
+        <span className="btn ghost sm" aria-disabled="true" style={DISABLED}>Email</span>
       )}
     </div>
   );
@@ -52,6 +72,16 @@ export function ServiceChips({ services, kind }: { services: string[]; kind: "ty
         </span>
       ))}
     </div>
+  );
+}
+
+const PAY_TONE: Record<string, string> = { "Full Payment": "ok", Partial: "warn", None: "pending" };
+
+export function PaymentPill({ status }: { status: string }) {
+  return (
+    <span className={`pill ${PAY_TONE[status] ?? "pending"}`} style={{ textTransform: "none", letterSpacing: 0 }}>
+      {status === "None" ? "No payment" : status}
+    </span>
   );
 }
 

@@ -1,17 +1,17 @@
-/* Leads & Customers dashboards: a wide spreadsheet-style table on desktop,
-   one stacked card per record on phones. */
+/* Leads & Customers dashboards: a compact table on desktop (no sideways scroll),
+   one stacked card per record on phones. Everything else lives in the Details popup. */
 
 .dt-wrap {
-  overflow-x: auto;
   border: 1px solid var(--rule);
   border-radius: 18px;
   background: var(--card);
+  overflow: hidden;
 }
 
 .dt {
-  /* Column widths come from <colgroup> (see the tables), so nothing reflows or overlaps. */
+  /* Column widths are percentages set in <colgroup> by each table. */
   table-layout: fixed;
-  min-width: 100%;
+  width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
@@ -19,7 +19,7 @@
 
 .dt th {
   text-align: left;
-  padding: 11px 12px;
+  padding: 11px 14px;
   background: var(--card-soft);
   color: var(--ink-2);
   font-size: 10.5px;
@@ -31,7 +31,7 @@
 }
 
 .dt td {
-  padding: 12px;
+  padding: 14px;
   border-top: 1px solid var(--rule);
   vertical-align: middle;
   overflow-wrap: anywhere;
@@ -39,28 +39,6 @@
 
 .dt tbody tr:first-child td {
   border-top: none;
-}
-
-/* The person/company column stays put while the rest scrolls sideways. */
-.dt th:first-child,
-.dt td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: var(--card);
-  box-shadow: 1px 0 0 var(--rule);
-}
-
-.dt th:first-child {
-  background: var(--card-soft);
-}
-
-.dt tr.dt-detail td {
-  background: var(--card-soft);
-}
-
-.dt tr.dt-detail td:first-child {
-  background: var(--card-soft);
 }
 
 .dt-contact {
@@ -124,12 +102,43 @@
   min-width: 0;
 }
 
-/* Call / Email: two equal-width buttons, stacked in the table, side by side on a phone card. */
+/* Row buttons: round Call / Email icons plus a Details button. */
+.dt-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dt-row-actions .btn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+.dt-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--card-soft);
+  color: var(--ink);
+  flex: none;
+}
+
+a.dt-icon-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+/* Call Now / Email as labelled buttons (inside the Details popup). */
 .dt-actions {
   display: flex;
-  flex-direction: column;
   gap: 6px;
-  align-items: stretch;
+  flex-wrap: wrap;
 }
 
 .dt-actions .btn {
@@ -142,7 +151,7 @@
   display: none;
 }
 
-/* One record per card on phones: same data, stacked in two columns. */
+/* One record per card on phones. */
 .dt-card {
   padding: 16px;
   display: flex;
@@ -160,6 +169,10 @@
   grid-column: 1 / -1;
 }
 
+.dt-card .dt-row-actions .btn {
+  flex: 1;
+}
+
 .dt-field-label {
   font-size: 10.5px;
   font-weight: 700;
@@ -167,14 +180,6 @@
   text-transform: uppercase;
   color: var(--ink-2);
   margin-bottom: 4px;
-}
-
-.dt-card .dt-actions {
-  flex-direction: row;
-}
-
-.dt-card .dt-actions .btn {
-  flex: 1 1 0;
 }
 
 .dt-toolbar {
@@ -197,7 +202,7 @@
   }
 }
 
-/* Service type / sub service picker (native <dialog>, so it isn't clipped by the scrolling table). */
+/* Service type / sub service picker (native <dialog>). */
 .svc-dialog {
   border: none;
   padding: 0;
@@ -273,4 +278,69 @@
 .svc-sub input,
 .svc-type input {
   margin-top: 2px;
+}
+
+/* Details popup (lead / customer). */
+.dtl-dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: calc(100vw - 24px);
+  width: 760px;
+  margin: auto;
+}
+
+.dtl-dialog::backdrop {
+  background: rgba(20, 16, 8, 0.45);
+}
+
+.dtl-panel {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 22px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+}
+
+.dtl-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.dtl-body {
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+}
+
+.dtl-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.dtl-grid > .dtl-wide {
+  grid-column: 1 / -1;
+}
+
+.dtl-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+@media (max-width: 560px) {
+  .dtl-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
