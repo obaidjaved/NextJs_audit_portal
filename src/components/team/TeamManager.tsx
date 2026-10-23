@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { createUser, resetUserPassword, setUserActive, setUserRole } from "@/lib/actions/users";
 
@@ -23,11 +24,11 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "INSPECTOR" as TeamUser["role"] });
 
-  function run(fn: () => Promise<void>, after?: () => void) {
+  function run(fn: () => Promise<unknown>, after?: () => void) {
     setError(null);
     startTransition(async () => {
       try {
-        await fn();
+        unwrap(await fn());
         router.refresh();
         after?.();
       } catch (err) {

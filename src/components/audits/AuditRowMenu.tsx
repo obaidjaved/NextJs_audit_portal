@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { MoreVertical } from "lucide-react";
 import { duplicateAudit } from "@/lib/actions/audits";
@@ -24,7 +25,7 @@ export function AuditRowMenu({ auditId }: { auditId: string }) {
     setError(null);
     startTransition(async () => {
       try {
-        const result = await duplicateAudit(auditId);
+        const result = unwrap(await duplicateAudit(auditId));
         setOpen(false);
         router.push(`/audits/${result.id}/edit`);
       } catch (err) {

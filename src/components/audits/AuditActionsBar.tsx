@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { approveAudit } from "@/lib/actions/audits";
@@ -24,7 +25,7 @@ export function AuditActionsBar({
     setError(null);
     startTransition(async () => {
       try {
-        await approveAudit(auditId);
+        unwrap(await approveAudit(auditId));
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to approve.");

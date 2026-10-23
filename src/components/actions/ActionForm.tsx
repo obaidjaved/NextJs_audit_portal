@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { createCorrectiveAction } from "@/lib/actions/corrective";
 
@@ -35,7 +36,7 @@ export function ActionForm({
     setError(null);
     startTransition(async () => {
       try {
-        await createCorrectiveAction({
+        unwrap(await createCorrectiveAction({
           title: state.title,
           description: state.description,
           priority: state.priority,
@@ -43,7 +44,7 @@ export function ActionForm({
           auditId: auditId ?? null,
           assigneeId: state.assigneeId || null,
           dueDate: state.dueDate || null,
-        });
+        }));
         setState((s) => ({ ...s, title: "", description: "", dueDate: "" }));
         router.refresh();
         onDone?.();

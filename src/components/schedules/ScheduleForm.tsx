@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { createSchedule } from "@/lib/actions/schedules";
 import type { ScheduleFrequency } from "@/lib/schedule";
@@ -37,7 +38,7 @@ export function ScheduleForm({
     setError(null);
     startTransition(async () => {
       try {
-        const result = await createSchedule(state);
+        const result = unwrap(await createSchedule(state));
         router.push(`/schedules`);
         void result;
       } catch (err) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TemplateField } from "@/lib/field-types";
@@ -180,7 +181,7 @@ export function AuditForm({
     startTransition(async () => {
       try {
         const payload = buildPayload(draft);
-        const result = auditId ? await updateAudit(auditId, payload) : await saveAudit(payload);
+        const result = unwrap(auditId ? await updateAudit(auditId, payload) : await saveAudit(payload));
         clearDraft();
         router.push(`/audits/${result.id}`);
       } catch (err) {

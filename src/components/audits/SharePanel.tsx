@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { setAuditSharing } from "@/lib/actions/audits";
 
 export function SharePanel({ auditId, initialToken, canShare }: { auditId: string; initialToken: string | null; canShare: boolean }) {
@@ -22,7 +23,7 @@ export function SharePanel({ auditId, initialToken, canShare }: { auditId: strin
     setError(null);
     startTransition(async () => {
       try {
-        const res = await setAuditSharing(auditId, enabled);
+        const res = unwrap(await setAuditSharing(auditId, enabled));
         setToken(res.shareToken);
         setCopied(false);
       } catch (err) {

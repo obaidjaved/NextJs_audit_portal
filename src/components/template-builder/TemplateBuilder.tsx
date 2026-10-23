@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { defaultTemplateFields, type TemplateField } from "@/lib/field-types";
 import { createTemplate, updateTemplate, deleteTemplate } from "@/lib/actions/templates";
@@ -65,7 +66,7 @@ export function TemplateBuilder({
     setError(null);
     startTransition(async () => {
       try {
-        const result = templateId ? await updateTemplate(templateId, state) : await createTemplate(state);
+        const result = unwrap(templateId ? await updateTemplate(templateId, state) : await createTemplate(state));
         router.push(`/templates/${result.id}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to save template.");
@@ -79,7 +80,7 @@ export function TemplateBuilder({
     setError(null);
     startTransition(async () => {
       try {
-        await deleteTemplate(templateId);
+        unwrap(await deleteTemplate(templateId));
         router.push("/templates");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to delete template.");

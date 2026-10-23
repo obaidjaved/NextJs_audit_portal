@@ -5,32 +5,39 @@ import { requireStaff } from "@/lib/access";
 import { customers, RepoError } from "@/lib/repo";
 import { customerSchema } from "@/lib/validation/customer";
 import { parseOrThrow } from "@/lib/validation/parse";
+import { attempt } from "./result";
 
 export async function createCustomer(input: unknown) {
-  await requireStaff();
-  const data = parseOrThrow(customerSchema, input);
-  const customer = await customers.create(data);
-  revalidatePath("/customers");
-  return { id: customer.id };
+  return attempt(async () => {
+    await requireStaff();
+    const data = parseOrThrow(customerSchema, input);
+    const customer = await customers.create(data);
+    revalidatePath("/customers");
+    return { id: customer.id };
+  });
 }
 
 export async function updateCustomer(id: string, input: unknown) {
-  await requireStaff();
-  const data = parseOrThrow(customerSchema, input);
-  await customers.update(id, data);
-  revalidatePath("/customers");
-  return { id };
+  return attempt(async () => {
+    await requireStaff();
+    const data = parseOrThrow(customerSchema, input);
+    await customers.update(id, data);
+    revalidatePath("/customers");
+    return { id };
+  });
 }
 
 export async function deleteCustomer(id: string) {
-  await requireStaff();
-  try {
-    await customers.remove(id);
-  } catch (err) {
-    if (err instanceof RepoError && err.status === 409) {
-      throw new Error("Can't delete — this customer has audits or schedules using it.");
+  return attempt(async () => {
+    await requireStaff();
+    try {
+      await customers.remove(id);
+    } catch (err) {
+      if (err instanceof RepoError && err.status === 409) {
+        throw new Error("Can't delete — this customer has audits or schedules using it.");
+      }
+      throw err;
     }
-    throw err;
-  }
-  revalidatePath("/customers");
+    revalidatePath("/customers");
+  });
 }

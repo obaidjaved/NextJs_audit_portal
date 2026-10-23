@@ -19,9 +19,9 @@ export async function attempt<T extends object = object>(fn: () => Promise<T | v
 }
 
 // Client side: pass anything an action returned; throws if it reported a failure.
-export function unwrap<T>(result: T): T {
-  if (result && typeof result === "object" && "ok" in result && (result as { ok: unknown }).ok === false) {
+export function unwrap<T>(result: T): Exclude<T, { ok: false }> {
+  if (result && typeof result === "object" && (result as { ok?: unknown }).ok === false) {
     throw new Error((result as unknown as { error: string }).error);
   }
-  return result;
+  return result as Exclude<T, { ok: false }>;
 }

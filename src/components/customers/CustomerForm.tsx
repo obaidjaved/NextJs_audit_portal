@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { createCustomer, updateCustomer } from "@/lib/actions/customers";
 
@@ -29,7 +30,7 @@ export function CustomerForm({
     setError(null);
     startTransition(async () => {
       try {
-        const result = customerId ? await updateCustomer(customerId, state) : await createCustomer(state);
+        const result = unwrap(customerId ? await updateCustomer(customerId, state) : await createCustomer(state));
         router.push(`/customers?customerId=${result.id}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to save customer.");

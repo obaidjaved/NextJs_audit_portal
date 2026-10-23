@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { unwrap } from "@/lib/actions/result";
 import Link from "next/link";
 import { setScheduleActive } from "@/lib/actions/schedules";
 import { FREQUENCY_LABEL, nextDueDate, parseLocalDate, type ScheduleFrequency } from "@/lib/schedule";
@@ -36,7 +37,7 @@ export function ScheduleList({ schedules }: { schedules: ScheduleRow[] }) {
     setLocalActive((m) => ({ ...m, [id]: active }));
     startTransition(async () => {
       try {
-        await setScheduleActive(id, active);
+        unwrap(await setScheduleActive(id, active));
       } catch (err) {
         setLocalActive((m) => ({ ...m, [id]: !active }));
         setToggleError(err instanceof Error ? err.message : "Failed to update schedule.");

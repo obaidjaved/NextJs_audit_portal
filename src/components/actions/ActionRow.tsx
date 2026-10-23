@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { unwrap } from "@/lib/actions/result";
 import { useState, useTransition } from "react";
 import { assignAction, deleteCorrectiveAction, setActionStatus } from "@/lib/actions/corrective";
 
@@ -45,11 +46,11 @@ export function ActionRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function run(fn: () => Promise<void>) {
+  function run(fn: () => Promise<unknown>) {
     setError(null);
     startTransition(async () => {
       try {
-        await fn();
+        unwrap(await fn());
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
       }
