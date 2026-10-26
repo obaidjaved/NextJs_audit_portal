@@ -91,6 +91,8 @@ model Customer {
   projectValue      Float?
   progressStatus    String    @default("In progress") // In progress | Rescheduled | Completed
   paymentProofs     Json      @default("[]") // string[] — copied from the lead it came from
+  payments          Json      @default("[]") // PaymentRecord[] — every payment received (see lib/ops-options)
+  amountPaid        Float     @default(0)
 
   audits    Audit[]
   schedules Schedule[]
@@ -248,7 +250,19 @@ model CustomerRequest {
   paymentStatus String @default("None") // None | Partial | Full Payment
   budgetQuote   Float?
   amountPaid    Float  @default(0)
-  paymentProofs Json   @default("[]") // string[] — transfer screenshots / invoices; at least one is needed to convert
+  paymentProofs Json   @default("[]") // string[] — transfer screenshots / invoices, one list over all payments
+  payments      Json   @default("[]") // PaymentRecord[] — filled in when the lead is converted
 
   @@index([status])
+}
+
+// Reusable emails the admin can send from the Audits page (merge tags like {{customer_name}} are filled in when sent).
+model EmailTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  subject      String
+  body         String
+  attachReport Boolean  @default(false) // attach the audit report PDF
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

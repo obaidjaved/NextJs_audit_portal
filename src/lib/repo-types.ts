@@ -29,6 +29,19 @@ export interface User {
   auditCount: number;
 }
 
+export type PaymentMethod = "PayPal" | "Bank Transfer";
+
+// One payment received from a customer (the deposit when a lead is converted, the final instalment, …).
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  date: string; // YYYY-MM-DD — when it was paid
+  transactionId: string;
+  proofs: string[]; // transfer screenshots / invoices
+  recordedAt: string; // ISO — when it was entered here
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -50,6 +63,8 @@ export interface Customer {
   projectValue: number | null;
   progressStatus: string;
   paymentProofs: string[]; // transfer screenshots / invoices (URLs or data URLs)
+  payments: PaymentRecord[];
+  amountPaid: number;
 }
 // The contact details of a customer, as embedded in an audit.
 export type CustomerBrief = Pick<Customer, "id" | "name" | "site" | "city" | "state" | "zip" | "contact" | "email" | "phone" | "createdAt">;
@@ -181,9 +196,11 @@ export interface CustomerRequest {
   budgetQuote: number | null;
   amountPaid: number;
   paymentProofs: string[];
+  payments: PaymentRecord[];
 }
 // What staff can change on a lead from the dashboard.
 export interface LeadPatch {
+  payments?: PaymentRecord[];
   paymentProofs?: string[];
   services?: string[];
   leadStatus?: string;
@@ -221,6 +238,24 @@ export interface Schedule {
   createdAt: Date;
   templateName: string;
   customerName: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  attachReport: boolean; // attach the audit report PDF when sending
+  createdAt: Date;
+  updatedAt: Date;
+}
+export type EmailTemplateInput = Pick<EmailTemplate, "name" | "subject" | "body" | "attachReport">;
+
+export interface MailMessage {
+  to: string;
+  subject: string;
+  body: string; // plain text
+  attachments?: { filename: string; contentType: string; contentBase64: string }[];
 }
 
 export interface Backend {
@@ -271,6 +306,15 @@ export interface Backend {
     update(id: string, patch: LeadPatch): Promise<void>;
     approve(id: string): Promise<{ customerId: string | null }>;
     reject(id: string, note?: string): Promise<void>;
+  };
+  emailTemplates: {
+    list(): Promise<EmailTemplate[]>;
+    create(data: EmailTemplateInput): Promise<EmailTemplate>;
+    update(id: string, data: EmailTemplateInput): Promise<EmailTemplate>;
+    remove(id: string): Promise<void>;
+  };
+  mail: {
+    send(message: MailMessage): Promise<void>;
   };
   schedules: {
     list(): Promise<Schedule[]>;

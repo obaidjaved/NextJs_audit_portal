@@ -8,19 +8,21 @@ export function ContactCell({
   company,
   email,
   phone,
+  compact,
 }: {
   name: string;
   title?: string | null;
   company: string;
   email?: string | null;
   phone?: string | null;
+  compact?: boolean; // name + company only
 }) {
   return (
     <div className="dt-contact">
       {name && <div className="dt-contact-name">{name}</div>}
       <div className="dt-contact-co">{[title, company].filter(Boolean).join(" | ")}</div>
-      {email && <div className="dt-contact-line">{email}</div>}
-      {phone && <div className="dt-contact-line">{phone}</div>}
+      {!compact && email && <div className="dt-contact-line">{email}</div>}
+      {!compact && phone && <div className="dt-contact-line">{phone}</div>}
     </div>
   );
 }
@@ -28,7 +30,17 @@ export function ContactCell({
 const DISABLED = { opacity: 0.45, cursor: "not-allowed" } as const;
 
 // "Call Now" and "Email". `compact` = round icon buttons for table rows.
-export function CallEmail({ email, phone, compact }: { email?: string | null; phone?: string | null; compact?: boolean }) {
+export function CallEmail({
+  email,
+  phone,
+  compact,
+  onEmail,
+}: {
+  email?: string | null;
+  phone?: string | null;
+  compact?: boolean;
+  onEmail?: () => void; // open an in-app email form instead of the mail app
+}) {
   if (compact) {
     return (
       <>
@@ -37,7 +49,9 @@ export function CallEmail({ email, phone, compact }: { email?: string | null; ph
         ) : (
           <span className="dt-icon-btn" aria-disabled="true" style={DISABLED}><Phone size={15} /></span>
         )}
-        {email ? (
+        {onEmail ? (
+          <button type="button" className="dt-icon-btn" onClick={onEmail} aria-label="Email" title="Email" style={{ cursor: "pointer" }}><Mail size={15} /></button>
+        ) : email ? (
           <a className="dt-icon-btn" href={`mailto:${email}`} aria-label="Email" title="Email"><Mail size={15} /></a>
         ) : (
           <span className="dt-icon-btn" aria-disabled="true" style={DISABLED}><Mail size={15} /></span>

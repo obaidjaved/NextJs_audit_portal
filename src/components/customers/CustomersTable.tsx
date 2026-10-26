@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { updateCustomerOps } from "@/lib/actions/ops";
-import { PROGRESS_STATUSES, money } from "@/lib/ops-options";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { completeCustomer, updateCustomerOps } from "@/lib/actions/ops";
+import { unwrap } from "@/lib/actions/result";
+import { PROGRESS_STATUSES, serviceTypesOf } from "@/lib/ops-options";
+import { SERVICE_GROUPS } from "@/lib/quote-options";
+import type { PaymentRecord } from "@/lib/repo-types";
+import { AuditorCombobox } from "@/components/ops/AuditorCombobox";
 import { InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, ContactCell, PaymentPill, ServiceChips } from "@/components/ops/Parts";
+import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
+import { PaymentDialog, ReminderToast } from "@/components/ops/Payments";
+import { CallEmail, ContactCell, ServiceChips, fmtDate } from "@/components/ops/Parts";
 import { CustomerDetails } from "./CustomerDetails";
 
 export interface CustomerOpsRow {
@@ -18,28 +25,30 @@ export interface CustomerOpsRow {
   state: string | null;
   zip: string | null;
   services: string[];
-  serviceDate: string | null;
+  serviceDate: string | null; // service needed by
   assignedAuditorId: string | null;
   assignedAuditorName: string | null;
-  assignedAt: string | null; // ISO
+  assignedAt: string | null; // ISO — date the query was assigned
   paymentStatus: string;
-  projectValue: number | null;
+  projectValue: number | null; // total amount of the deal
+  amountPaid: number;
   progressStatus: string;
   paymentProofs: string[];
+  payments: PaymentRecord[];
   // The newest finished audit, shown as the "Final report".
   finalReportId: string | null;
   finalReportDoc: string | null;
 }
 
-// Header label + column width (% of the table). Only the important columns live
-// here; everything else is in the Details popup.
+// Header label + column width (% of the table).
 const COLS: [string, string][] = [
-  ["Customer", "29%"],
-  ["Service", "21%"],
-  ["Auditor", "14%"],
-  ["Progress", "17%"],
-  ["Value", "8%"],
-  ["", "11%"],
+  ["Name", "21%"],
+  ["Date query assigned", "12%"],
+  ["Service", "16%"],
+  ["Query assigned to", "17%"],
+  ["Service needed by", "12%"],
+  ["Status", "12%"],
+  ["", "10%"],
 ];
 
 // "First Last, Title" -> name + title
@@ -56,49 +65,65 @@ export function CustomersTable({
 }: {
   customers: CustomerOpsRow[];
   auditors: { id: string; name: string }[];
-  canAssign: boolean;
+  canAssign: boolean; // administrators assign auditors and complete queries
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
-  const [progress, setProgress] = useState("All");
+  const [status, setStatus] = useState("All");
+  const [auditor, setAuditor] = useState("All");
+  const [service, setService] = useState("All");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [completeId, setCompleteId] = useState<string | null>(null);
+  const [reminderFor, setReminderFor] = useState<string | null>(null);
 
-  const shown = useMemo(() => {
+  const auditorNames = useMemo(() => [...new Set(customers.map((c) => c.assignedAuditorName).filter((n): n is string => !!n))].sort(), [customers]);
+
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return customers.filter((c) => {
-      if (progress !== "All" && c.progressStatus !== progress) return false;
+      if (status !== "All" && c.progressStatus !== status) return false;
+      if (auditor === "Unassigned" ? !!c.assignedAuditorId : auditor !== "All" && c.assignedAuditorName !== auditor) return false;
+      if (service !== "All" && !serviceTypesOf(c.services).includes(service)) return false;
       if (!q) return true;
       return [c.name, c.contact, c.email, c.phone, c.assignedAuditorName, ...c.services].join(" ").toLowerCase().includes(q);
     });
-  }, [customers, search, progress]);
+  }, [customers, search, status, auditor, service]);
 
+  const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}`);
   const open = customers.find((c) => c.id === openId) ?? null;
+  const completing = customers.find((c) => c.id === completeId) ?? null;
+  const closeReminder = useCallback(() => setReminderFor(null), []);
+
+  // "Completed" opens the payment check first; the other statuses are plain edits.
+  async function saveStatus(c: CustomerOpsRow, value: string) {
+    if (value === "Completed") {
+      setCompleteId(c.id);
+      return { ok: true as const };
+    }
+    return updateCustomerOps(c.id, { progressStatus: value as "In progress" | "Rescheduled" });
+  }
 
   function cells(c: CustomerOpsRow) {
     const { name, title } = splitContact(c.contact);
     return {
-      contact: <ContactCell name={name} title={title} company={c.name} email={c.email} phone={c.phone} />,
-      service: (
-        <div>
-          <ServiceChips services={c.services} kind="type" />
-          {c.services.length > 0 && (
-            <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 4 }}>
-              {c.services.length} sub service{c.services.length === 1 ? "" : "s"}
-            </div>
-          )}
-        </div>
-      ),
-      auditor: c.assignedAuditorName ? (
-        <span style={{ fontWeight: 600 }}>{c.assignedAuditorName}</span>
+      name: <ContactCell compact name={name} title={title} company={c.name} email={c.email} phone={c.phone} />,
+      assigned: c.assignedAuditorId ? fmtDate(c.assignedAt) : "—",
+      service: <ServiceChips services={c.services} kind="type" />,
+      auditor: canAssign ? (
+        <AuditorCombobox value={c.assignedAuditorId} auditors={auditors} onSave={(id) => updateCustomerOps(c.id, { assignedAuditorId: id })} />
       ) : (
-        <span className="pill warn" style={{ textTransform: "none", letterSpacing: 0 }}>Unassigned</span>
+        <span style={{ fontWeight: 600 }}>{c.assignedAuditorName ?? "Unassigned"}</span>
       ),
-      progress: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-          <InlineSelect label="Progress status" value={c.progressStatus} options={PROGRESS_STATUSES} onSave={(v) => updateCustomerOps(c.id, { progressStatus: v })} />
-          <PaymentPill status={c.paymentStatus} />
-        </div>
+      needed: fmtDate(c.serviceDate),
+      status: (
+        <InlineSelect
+          label="Status"
+          value={c.progressStatus}
+          options={PROGRESS_STATUSES.filter((s) => s !== "Completed" || canAssign || c.progressStatus === "Completed")}
+          disabled={c.progressStatus === "Completed" && !canAssign}
+          onSave={(v) => saveStatus(c, v)}
+        />
       ),
-      value: <span style={{ fontWeight: 600 }}>{money(c.projectValue)}</span>,
       actions: (
         <div className="dt-row-actions">
           <CallEmail compact email={c.email} phone={c.phone} />
@@ -112,26 +137,20 @@ export function CustomersTable({
 
   return (
     <div>
-      <div className="dt-toolbar">
-        <div className="search-box" style={{ flex: "1 1 240px", maxWidth: 360 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input placeholder="Search customers…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <div className="filter-row" style={{ flexWrap: "wrap" }}>
-          {["All", ...PROGRESS_STATUSES].map((s) => (
-            <button key={s} type="button" className={progress === s ? "active" : ""} onClick={() => setProgress(s)}>
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
+      <FilterBar
+        search={search}
+        onSearch={setSearch}
+        placeholder="Search customers by name, company, auditor…"
+        filters={[
+          { label: "Status", value: status, onChange: setStatus, options: ["All", ...PROGRESS_STATUSES] },
+          { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", "Unassigned", ...auditorNames] },
+          { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+        ]}
+      />
 
-      {shown.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
-          {customers.length === 0 ? "No customers yet. Add one with “+ New Customer”, or convert a lead." : "No customers match this filter."}
+          {customers.length === 0 ? "No customers yet. Add one with “+ New Customer”, or convert a lead." : "No customers match these filters."}
         </div>
       ) : (
         <>
@@ -150,15 +169,16 @@ export function CustomersTable({
                 </tr>
               </thead>
               <tbody>
-                {shown.map((cu) => {
+                {paged.pageItems.map((cu) => {
                   const c = cells(cu);
                   return (
                     <tr key={cu.id}>
-                      <td>{c.contact}</td>
+                      <td>{c.name}</td>
+                      <td>{c.assigned}</td>
                       <td>{c.service}</td>
                       <td>{c.auditor}</td>
-                      <td>{c.progress}</td>
-                      <td>{c.value}</td>
+                      <td>{c.needed}</td>
+                      <td>{c.status}</td>
                       <td>{c.actions}</td>
                     </tr>
                   );
@@ -168,27 +188,31 @@ export function CustomersTable({
           </div>
 
           <div className="dt-cards">
-            {shown.map((cu) => {
+            {paged.pageItems.map((cu) => {
               const c = cells(cu);
               return (
                 <div key={cu.id} className="card dt-card">
-                  {c.contact}
+                  {c.name}
                   <div className="dt-card-grid">
                     <div className="dt-wide">
                       <div className="dt-field-label">Service</div>
                       {c.service}
                     </div>
                     <div>
-                      <div className="dt-field-label">Auditor</div>
-                      {c.auditor}
+                      <div className="dt-field-label">Query assigned</div>
+                      {c.assigned}
                     </div>
                     <div>
-                      <div className="dt-field-label">Value</div>
-                      {c.value}
+                      <div className="dt-field-label">Needed by</div>
+                      {c.needed}
                     </div>
                     <div className="dt-wide">
-                      <div className="dt-field-label">Progress</div>
-                      {c.progress}
+                      <div className="dt-field-label">Assigned to</div>
+                      {c.auditor}
+                    </div>
+                    <div className="dt-wide">
+                      <div className="dt-field-label">Status</div>
+                      {c.status}
                     </div>
                   </div>
                   <div className="dt-row-actions">
@@ -201,10 +225,44 @@ export function CustomersTable({
               );
             })}
           </div>
+
+          <Pagination {...paged} onPage={paged.setPage} />
         </>
       )}
 
-      {open && <CustomerDetails customer={open} auditors={auditors} canAssign={canAssign} onClose={() => setOpenId(null)} />}
+      {open && (
+        <CustomerDetails
+          customer={open}
+          auditors={auditors}
+          canAssign={canAssign}
+          onClose={() => setOpenId(null)}
+          onComplete={() => {
+            setOpenId(null);
+            setCompleteId(open.id);
+          }}
+        />
+      )}
+
+      {completing && (
+        <PaymentDialog
+          mode="complete"
+          title={`Complete ${completing.name}`}
+          auditor={completing.assignedAuditorName}
+          total={completing.projectValue}
+          paid={completing.amountPaid}
+          paymentStatus={completing.paymentStatus}
+          onClose={() => setCompleteId(null)}
+          onSubmit={async (details) => {
+            const res = unwrap(await completeCustomer(completing.id, details));
+            setCompleteId(null);
+            setReminderFor(completing.name);
+            router.refresh();
+            return res;
+          }}
+        />
+      )}
+
+      {reminderFor && <ReminderToast onClose={closeReminder} onGo={() => router.push(`/audits?q=${encodeURIComponent(reminderFor)}`)} />}
     </div>
   );
 }

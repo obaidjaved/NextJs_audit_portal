@@ -26,7 +26,8 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+  vertical-align: bottom;
   border-bottom: 1px solid var(--rule);
 }
 
@@ -342,5 +343,119 @@ a.dt-icon-btn:hover {
 @media (max-width: 560px) {
   .dtl-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Search + filters + pagination (list pages). */
+.lc-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.lc-search {
+  flex: 1 1 240px;
+  max-width: 360px;
+  align-self: flex-end;
+}
+
+.lc-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.lc-filter .select {
+  height: 42px;
+  min-width: 150px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.lc-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.lc-count {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.lc-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.lc-pages button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--card-soft);
+  color: var(--ink);
+  font: 700 12.5px var(--font-display);
+  cursor: pointer;
+}
+
+.lc-pages button.active {
+  background: var(--pill);
+  color: var(--pill-ink);
+  border-color: transparent;
+}
+
+.lc-pages button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Timed reminder shown after a customer's query is completed. */
+.reminder {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 100;
+  max-width: min(420px, calc(100vw - 32px));
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-left: 5px solid var(--ok);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 16px 18px 12px;
+  overflow: hidden;
+}
+
+.reminder-bar {
+  height: 3px;
+  background: var(--ok);
+  margin: 12px -18px -12px;
+  transform-origin: left;
+  animation: reminder-drain linear forwards;
+}
+
+@keyframes reminder-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (max-width: 860px) {
+  .reminder {
+    bottom: 76px;
   }
 }

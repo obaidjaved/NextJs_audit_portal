@@ -3,41 +3,26 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { approveQuoteRequest, rejectQuoteRequest } from "@/lib/actions/quote-requests";
-import { unwrap } from "@/lib/actions/result";
+import { rejectQuoteRequest } from "@/lib/actions/quote-requests";
 import { updateLead } from "@/lib/actions/ops";
-import { LEAD_STATUSES, PAYMENT_STATUSES, money } from "@/lib/ops-options";
+import { unwrap } from "@/lib/actions/result";
+import { LEAD_STATUSES, money } from "@/lib/ops-options";
 import { InlineDate, InlineMoney, InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, fmtDate } from "@/components/ops/Parts";
+import { CallEmail, PaymentPill, fmtDate } from "@/components/ops/Parts";
 import { DetailField, DetailsDialog } from "@/components/ops/Dialog";
-import { ProofManager } from "@/components/ops/ProofManager";
+import { PaymentsList } from "@/components/ops/Payments";
 import { ServicePicker } from "@/components/ops/ServicePicker";
 import type { LeadRow } from "./LeadsTable";
 
-// Everything about one lead, in a popup. Edits save as you go; Convert turns it into a customer.
-export function LeadDetails({ lead: l, canReview, onClose }: { lead: LeadRow; canReview: boolean; onClose: () => void }) {
+// Everything about one lead, in a popup. Edits save as you go; Convert opens the payment form.
+export function LeadDetails({ lead: l, canReview, onClose, onConvert }: { lead: LeadRow; canReview: boolean; onClose: () => void; onConvert: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const hasProof = l.paymentProofs.length > 0;
   const locked = l.status !== "PENDING";
   const balance = l.budgetQuote !== null ? Math.max(l.budgetQuote - l.amountPaid, 0) : null;
   const address = [l.street, l.street2, [l.city, l.state].filter(Boolean).join(", "), l.zip].filter(Boolean).join(", ");
-
-  function convert() {
-    if (!confirm(`Convert ${l.companyName} into a customer?`)) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        const res = unwrap(await approveQuoteRequest(l.id));
-        router.push(res.ok && res.customerId ? `/customers?customerId=${res.customerId}` : "/customers");
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't convert this lead.");
-      }
-    });
-  }
 
   function reject() {
     const note = prompt(`Reject ${l.companyName}? Optionally add a note for your records:`);
@@ -66,10 +51,10 @@ export function LeadDetails({ lead: l, canReview, onClose }: { lead: LeadRow; ca
           <ServicePicker label="Services" kind="sub" services={l.services} requireOne onSave={(s) => updateLead(l.id, { services: s })} />
         </DetailField>
 
-        <DetailField label="Service required by">
-          <InlineDate label="Date of service required" value={l.dateNeeded} onSave={(v) => updateLead(l.id, { dateNeeded: v ?? l.dateNeeded })} />
+        <DetailField label="Service needed by">
+          <InlineDate label="Date service is needed by" value={l.dateNeeded} onSave={(v) => updateLead(l.id, { dateNeeded: v ?? l.dateNeeded })} />
         </DetailField>
-        <DetailField label="Lead status">
+        <DetailField label="Status">
           <InlineSelect
             label="Lead status"
             value={l.leadStatus}
@@ -78,20 +63,25 @@ export function LeadDetails({ lead: l, canReview, onClose }: { lead: LeadRow; ca
             onSave={(v) => updateLead(l.id, { leadStatus: v })}
           />
         </DetailField>
-        <DetailField label="Payment status">
-          <InlineSelect label="Payment status" value={l.paymentStatus} options={PAYMENT_STATUSES} onSave={(v) => updateLead(l.id, { paymentStatus: v })} />
+
+        <DetailField label="Total amount of deal">
+          <InlineMoney label="Total amount of deal" value={l.budgetQuote} disabled={locked} onSave={(v) => updateLead(l.id, { budgetQuote: v })} />
         </DetailField>
-        <DetailField label="Budget quote">
-          <InlineMoney label="Budget quote" value={l.budgetQuote} onSave={(v) => updateLead(l.id, { budgetQuote: v })} />
-        </DetailField>
-        <DetailField label="Record payment (amount received)">
-          <InlineMoney label="Amount paid" value={l.amountPaid} nullable={false} onSave={(v) => updateLead(l.id, { amountPaid: v ?? 0 })} />
-          {balance !== null && <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 4 }}>Balance {money(balance)}</div>}
+        <DetailField label="Payment">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span><PaymentPill status={l.paymentStatus} /></span>
+            <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
+              Paid {money(l.amountPaid)}
+              {balance !== null && l.amountPaid > 0 ? ` · balance ${money(balance)}` : ""}
+            </span>
+          </div>
         </DetailField>
 
-        <DetailField label="Payment proof" wide>
-          <ProofManager proofs={l.paymentProofs} readOnly={l.status === "REJECTED"} onSave={(p) => updateLead(l.id, { paymentProofs: p })} />
-        </DetailField>
+        {l.payments.length > 0 && (
+          <DetailField label="Payments received" wide>
+            <PaymentsList payments={l.payments} />
+          </DetailField>
+        )}
 
         {l.additionalInfo && (
           <DetailField label="Additional info" wide>
@@ -109,7 +99,7 @@ export function LeadDetails({ lead: l, canReview, onClose }: { lead: LeadRow; ca
               {l.status === "APPROVED" && l.customerId && (
                 <>
                   {" · "}
-                  <Link href={`/customers?customerId=${l.customerId}`} style={{ textDecoration: "underline", fontWeight: 700 }}>Open customer</Link>
+                  <Link href="/customers" style={{ textDecoration: "underline", fontWeight: 700 }}>See customers</Link>
                 </>
               )}
             </p>
@@ -125,9 +115,8 @@ export function LeadDetails({ lead: l, canReview, onClose }: { lead: LeadRow; ca
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
             {canReview ? (
               <>
-                {!hasProof && <span style={{ fontSize: 12, color: "var(--ink-2)", maxWidth: 240 }}>Attach a transfer screenshot or invoice to convert.</span>}
-                <button type="button" className="btn primary sm" disabled={pending || !hasProof} onClick={convert} title={hasProof ? "" : "Payment proof needed"}>
-                  {pending ? "Working…" : "Convert to customer"}
+                <button type="button" className="btn primary sm" disabled={pending} onClick={onConvert}>
+                  Convert to customer
                 </button>
                 <button type="button" className="btn ghost sm" disabled={pending} onClick={reject}>Reject</button>
               </>

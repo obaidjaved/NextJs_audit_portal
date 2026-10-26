@@ -34,6 +34,7 @@ export default async function LeadsPage() {
     budgetQuote: r.budgetQuote,
     amountPaid: r.amountPaid,
     paymentProofs: r.paymentProofs,
+    payments: r.payments,
   }));
 
   return (

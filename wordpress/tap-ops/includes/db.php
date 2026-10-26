@@ -37,6 +37,8 @@ function tap_ops_install_schema() {
   project_value decimal(12,2) DEFAULT NULL,
   progress_status varchar(30) NOT NULL DEFAULT 'In progress',
   payment_proofs longtext,
+  payments longtext,
+  amount_paid decimal(12,2) NOT NULL DEFAULT 0,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY name (name)
@@ -157,9 +159,21 @@ function tap_ops_install_schema() {
   budget_quote decimal(12,2) DEFAULT NULL,
   amount_paid decimal(12,2) NOT NULL DEFAULT 0,
   payment_proofs longtext,
+  payments longtext,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   KEY status (status)
+) $c;";
+
+	$sql[] = "CREATE TABLE {$t('email_templates')} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(120) NOT NULL,
+  subject varchar(255) NOT NULL,
+  body longtext,
+  attach_report tinyint(1) NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id)
 ) $c;";
 
 	$sql[] = "CREATE TABLE {$t('doc_sequences')} (
@@ -171,6 +185,8 @@ function tap_ops_install_schema() {
 	foreach ( $sql as $statement ) {
 		dbDelta( $statement );
 	}
+
+	tap_ops_seed_email_templates();
 
 	// v2 added lead/customer tracking columns: give leads that were already
 	// decided a matching status, and let existing customers inherit their lead's services.

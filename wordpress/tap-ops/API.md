@@ -43,7 +43,7 @@ User: `{ id, name, email, role: "ADMIN"|"INSPECTOR", active: bool, auditCount: i
 
 Customer: `{ id, name, site, city, state, zip, contact, email, phone, createdAt, services: string[], serviceDate: "YYYY-MM-DD"|null,
 assignedAuditorId, assignedAuditorName, assignedAt, paymentStatus: "None"|"Partial"|"Full Payment", projectValue: number|null,
-progressStatus: "In progress"|"Rescheduled"|"Completed", paymentProofs: string[] }` (strings or null unless noted).
+progressStatus: "In progress"|"Rescheduled"|"Completed", paymentProofs: string[], payments: PaymentRecord[], amountPaid: number }` (strings or null unless noted).
 
 - `GET /customers` -> `Customer[]` ordered by name asc. `GET /customers/{id}` -> Customer.
 - `POST /customers` `{name (required), site?, city?, state?, zip?, contact?, email?, phone?}` -> Customer.
@@ -102,13 +102,23 @@ createdById: string|null, resolvedAt: iso|null, createdAt, customerName, auditDo
 - `PATCH /actions/{id}` partial `{status, assigneeId, ...}`; setting status RESOLVED sets resolvedAt=now, otherwise clears it -> Action.
 - `DELETE /actions/{id}` -> `{ok:true}`.
 
+## Payments, email templates, mail
+
+PaymentRecord: `{ id, amount, method: "PayPal"|"Bank Transfer", date: "YYYY-MM-DD", transactionId, proofs: string[], recordedAt }`.
+Customers and requests both carry `payments[]` (writable via PATCH; up to 20), and customers also `amountPaid`.
+
+- `GET /email-templates` (staff) -> `EmailTemplate[]` `{id,name,subject,body,attachReport,createdAt,updatedAt}`; two starter templates are created on first use.
+- `POST /email-templates` (admin) `{name,subject,body,attachReport?}`; `PATCH|DELETE /email-templates/{id}` (admin).
+- `POST /mail/send` (staff) `{to, subject, body, attachments?: [{filename, contentType, contentBase64}]}` -> `{ok:true}`; sent with `wp_mail()`
+  (plain text, up to 3 attachments of 15 MB). 502 `mail_failed` if WordPress can't send (configure an SMTP plugin).
+
 ## Customer requests (new-customer intake)
 
 Request: `{ id, firstName, lastName, companyName, title, street, street2, city, state, zip, phone, email,
 services: string[], trainings: string[], dateNeeded: "YYYY-MM-DD", additionalInfo, status: "PENDING"|"APPROVED"|"REJECTED",
 reviewedById, reviewedByName, reviewedAt, reviewNote, customerId, createdAt, source: string,
 leadStatus: "New"|"Contacted"|"In progress"|"Cold"|"Not Interested"|"Converted", paymentStatus: "None"|"Partial"|"Full Payment",
-budgetQuote: number|null, amountPaid: number, paymentProofs: string[] }`
+budgetQuote: number|null, amountPaid: number, paymentProofs: string[], payments: PaymentRecord[] }`
 
 - `GET /requests` -> `Request[]` newest first (max 200). `GET /requests/pending-count` -> `{count:int}`.
 - `POST /requests` — **public intake**, requires the key but NOT a user. Same fields as Request (required: firstName,

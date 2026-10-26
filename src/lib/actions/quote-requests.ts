@@ -61,26 +61,6 @@ function reviewError(err: unknown): Error {
   return err instanceof Error ? err : new Error("Something went wrong. Please try again.");
 }
 
-// Converts a lead into a customer. Admin only, and only once the lead has a
-// payment proof (a transfer screenshot or an invoice).
-export async function approveQuoteRequest(id: string): Promise<ActionResult<{ customerId: string | null }>> {
-  return attempt(async () => {
-    await requireAdmin();
-    const lead = (await requests.list()).find((r) => r.id === id);
-    if (lead && lead.paymentProofs.length === 0) {
-      throw new Error("Attach a payment proof (transfer screenshot or invoice) before converting this lead.");
-    }
-    try {
-      const { customerId } = await requests.approve(id);
-      revalidatePath("/leads");
-      revalidatePath("/customers");
-      return { customerId };
-    } catch (err) {
-      throw reviewError(err);
-    }
-  });
-}
-
 export async function rejectQuoteRequest(id: string, note?: string): Promise<ActionResult> {
   return attempt(async () => {
     await requireAdmin();

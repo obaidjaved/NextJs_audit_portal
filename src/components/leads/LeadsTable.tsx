@@ -1,10 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { updateLead } from "@/lib/actions/ops";
-import { LEAD_STATUSES } from "@/lib/ops-options";
+import { useRouter } from "next/navigation";
+import { convertLead, updateLead } from "@/lib/actions/ops";
+import { unwrap } from "@/lib/actions/result";
+import { LEAD_STATUSES, serviceTypesOf } from "@/lib/ops-options";
+import { SERVICE_GROUPS } from "@/lib/quote-options";
+import type { PaymentRecord } from "@/lib/repo-types";
 import { InlineSelect } from "@/components/ops/Inline";
-import { CallEmail, ContactCell, PaymentPill, ServiceChips, fmtDate } from "@/components/ops/Parts";
+import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
+import { PaymentDialog } from "@/components/ops/Payments";
+import { CallEmail, ContactCell, ServiceChips, fmtDate } from "@/components/ops/Parts";
 import { LeadDetails } from "./LeadDetails";
 
 export interface LeadRow {
@@ -21,7 +27,7 @@ export interface LeadRow {
   phone: string;
   email: string;
   services: string[];
-  dateNeeded: string; // YYYY-MM-DD — date of service required
+  dateNeeded: string; // YYYY-MM-DD — service needed by
   additionalInfo: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string; // ISO — date of lead
@@ -34,67 +40,66 @@ export interface LeadRow {
   budgetQuote: number | null;
   amountPaid: number;
   paymentProofs: string[];
+  payments: PaymentRecord[];
 }
 
-// Header label + column width (% of the table). Only the important columns live
-// here; everything else is in the Details popup.
+// Header label + column width (% of the table).
 const COLS: [string, string][] = [
-  ["Lead", "31%"],
-  ["Service", "23%"],
-  ["Status", "19%"],
+  ["Name", "27%"],
   ["Date of lead", "12%"],
-  ["", "15%"],
+  ["Service", "21%"],
+  ["Service needed by", "13%"],
+  ["Status", "15%"],
+  ["", "12%"],
 ];
 
 export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: boolean }) {
-  const [filter, setFilter] = useState<string>("All");
+  const router = useRouter();
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("All");
+  const [service, setService] = useState("All");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [convertId, setConvertId] = useState<string | null>(null);
 
-  const shown = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return leads.filter((l) => {
-      if (filter !== "All" && l.leadStatus !== filter) return false;
+      if (status !== "All" && l.leadStatus !== status) return false;
+      if (service !== "All" && !serviceTypesOf(l.services).includes(service)) return false;
       if (!q) return true;
       return [l.firstName, l.lastName, l.companyName, l.email, l.phone, l.city, l.state, ...l.services].join(" ").toLowerCase().includes(q);
     });
-  }, [leads, filter, search]);
+  }, [leads, search, status, service]);
 
-  const counts = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const l of leads) m.set(l.leadStatus, (m.get(l.leadStatus) ?? 0) + 1);
-    return m;
-  }, [leads]);
-
+  const paged = usePaged(filtered, `${search}|${status}|${service}`);
   const open = leads.find((l) => l.id === openId) ?? null;
+  const converting = leads.find((l) => l.id === convertId) ?? null;
+
+  // "Converted" can only be reached through the payment popup; every other status is a plain edit.
+  async function saveStatus(l: LeadRow, value: string) {
+    if (value === "Converted") {
+      setConvertId(l.id);
+      return { ok: true as const };
+    }
+    return updateLead(l.id, { leadStatus: value });
+  }
 
   function cells(l: LeadRow) {
     const locked = l.status !== "PENDING";
     return {
-      contact: <ContactCell name={`${l.firstName} ${l.lastName}`.trim()} title={l.title} company={l.companyName} email={l.email} phone={l.phone} />,
-      service: (
-        <div>
-          <ServiceChips services={l.services} kind="type" />
-          {l.services.length > 0 && (
-            <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 4 }}>
-              {l.services.length} sub service{l.services.length === 1 ? "" : "s"}
-            </div>
-          )}
-        </div>
-      ),
-      status: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-          <InlineSelect
-            label="Lead status"
-            value={l.leadStatus}
-            options={LEAD_STATUSES.filter((s) => s !== "Converted" || l.leadStatus === "Converted")}
-            disabled={locked}
-            onSave={(v) => updateLead(l.id, { leadStatus: v })}
-          />
-          <PaymentPill status={l.paymentStatus} />
-        </div>
-      ),
+      name: <ContactCell compact name={`${l.firstName} ${l.lastName}`.trim()} title={l.title} company={l.companyName} email={l.email} phone={l.phone} />,
       date: fmtDate(l.createdAt),
+      service: <ServiceChips services={l.services} kind="type" />,
+      needed: fmtDate(l.dateNeeded),
+      status: (
+        <InlineSelect
+          label="Lead status"
+          value={l.leadStatus}
+          options={LEAD_STATUSES.filter((s) => s !== "Converted" || canReview || l.leadStatus === "Converted")}
+          disabled={locked}
+          onSave={(v) => saveStatus(l, v)}
+        />
+      ),
       actions: (
         <div className="dt-row-actions">
           <CallEmail compact email={l.email} phone={l.phone} />
@@ -108,29 +113,21 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
 
   return (
     <div>
-      <div className="dt-toolbar">
-        <div className="search-box" style={{ flex: "1 1 240px", maxWidth: 360 }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input placeholder="Search leads…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <div className="filter-row" style={{ flexWrap: "wrap" }}>
-          {["All", ...LEAD_STATUSES].map((s) => (
-            <button key={s} type="button" className={filter === s ? "active" : ""} onClick={() => setFilter(s)}>
-              {s}
-              {s !== "All" && counts.get(s) ? ` (${counts.get(s)})` : s === "All" ? ` (${leads.length})` : ""}
-            </button>
-          ))}
-        </div>
-      </div>
+      <FilterBar
+        search={search}
+        onSearch={setSearch}
+        placeholder="Search leads by name, company, email…"
+        filters={[
+          { label: "Status", value: status, onChange: setStatus, options: ["All", ...LEAD_STATUSES] },
+          { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+        ]}
+      />
 
-      {shown.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
           {leads.length === 0
             ? "No leads yet. Quote-form submissions appear here, and you can add one yourself with “+ Add lead”."
-            : "No leads match this filter."}
+            : "No leads match these filters."}
         </div>
       ) : (
         <>
@@ -149,14 +146,15 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
                 </tr>
               </thead>
               <tbody>
-                {shown.map((l) => {
+                {paged.pageItems.map((l) => {
                   const c = cells(l);
                   return (
                     <tr key={l.id}>
-                      <td>{c.contact}</td>
-                      <td>{c.service}</td>
-                      <td>{c.status}</td>
+                      <td>{c.name}</td>
                       <td>{c.date}</td>
+                      <td>{c.service}</td>
+                      <td>{c.needed}</td>
+                      <td>{c.status}</td>
                       <td>{c.actions}</td>
                     </tr>
                   );
@@ -166,23 +164,27 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
           </div>
 
           <div className="dt-cards">
-            {shown.map((l) => {
+            {paged.pageItems.map((l) => {
               const c = cells(l);
               return (
                 <div key={l.id} className="card dt-card">
-                  {c.contact}
+                  {c.name}
                   <div className="dt-card-grid">
                     <div className="dt-wide">
                       <div className="dt-field-label">Service</div>
                       {c.service}
                     </div>
                     <div>
-                      <div className="dt-field-label">Status</div>
-                      {c.status}
-                    </div>
-                    <div>
                       <div className="dt-field-label">Date of lead</div>
                       {c.date}
+                    </div>
+                    <div>
+                      <div className="dt-field-label">Needed by</div>
+                      {c.needed}
+                    </div>
+                    <div className="dt-wide">
+                      <div className="dt-field-label">Status</div>
+                      {c.status}
                     </div>
                   </div>
                   <div className="dt-row-actions">
@@ -195,10 +197,38 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
               );
             })}
           </div>
+
+          <Pagination {...paged} onPage={paged.setPage} />
         </>
       )}
 
-      {open && <LeadDetails lead={open} canReview={canReview} onClose={() => setOpenId(null)} />}
+      {open && (
+        <LeadDetails
+          lead={open}
+          canReview={canReview}
+          onClose={() => setOpenId(null)}
+          onConvert={() => {
+            setOpenId(null);
+            setConvertId(open.id);
+          }}
+        />
+      )}
+
+      {converting && (
+        <PaymentDialog
+          mode="convert"
+          title={`Convert ${converting.companyName}`}
+          defaultTotal={converting.budgetQuote}
+          onClose={() => setConvertId(null)}
+          onSubmit={async (d) => {
+            const res = unwrap(await convertLead(converting.id, d));
+            setConvertId(null);
+            router.push("/customers");
+            router.refresh();
+            return res;
+          }}
+        />
+      )}
     </div>
   );
 }

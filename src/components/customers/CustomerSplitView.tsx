@@ -8,6 +8,7 @@ import { auditStatus } from "@/lib/scoring";
 import { initials } from "@/lib/initials";
 import { FREQUENCY_LABEL, type ScheduleFrequency } from "@/lib/schedule";
 import { CustomersTable } from "./CustomersTable";
+import type { PaymentRecord } from "@/lib/repo-types";
 
 export interface CustomerRow {
   id: string;
@@ -28,6 +29,8 @@ export interface CustomerRow {
   projectValue: number | null;
   progressStatus: string;
   paymentProofs: string[];
+  payments: PaymentRecord[];
+  amountPaid: number;
 }
 
 export interface AuditRow {
@@ -161,6 +164,8 @@ export function CustomerSplitView({
           state: c.state,
           zip: c.zip,
           paymentProofs: c.paymentProofs,
+          payments: c.payments,
+          amountPaid: c.amountPaid,
           services: c.services,
           serviceDate: c.serviceDate,
           assignedAuditorId: c.assignedAuditorId,

@@ -9,4 +9,4 @@ export * from "@/lib/repo-types";
 // environment variables; leave it unset everywhere else.
 const backend = process.env.DATA_BACKEND === "wordpress" ? wordpressBackend : postgresBackend;
 
-export const { users, customers, templates, audits, actions, requests, schedules } = backend;
+export const { users, customers, templates, audits, actions, requests, schedules, emailTemplates, mail } = backend;

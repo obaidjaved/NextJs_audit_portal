@@ -10,6 +10,9 @@ import {
   type Category,
   type Customer,
   type CustomerInput,
+  type EmailTemplate,
+  type MailMessage,
+  type PaymentRecord,
   type TemplateInput,
   type Audit,
   type AuditWriteInput,
@@ -69,9 +72,10 @@ function actionOf(a: Prisma.CorrectiveActionGetPayload<{ include: { customer: { 
 const customerInclude = { assignedAuditor: { select: { name: true } } } as const;
 
 function customerOf(c: Prisma.CustomerGetPayload<{ include: typeof customerInclude }>): Customer {
-  const { assignedAuditor, serviceDate, services, paymentProofs, ...rest } = c;
+  const { assignedAuditor, serviceDate, services, paymentProofs, payments, ...rest } = c;
   return {
     ...rest,
+    payments: Array.isArray(payments) ? (payments as unknown as PaymentRecord[]) : [],
     services: Array.isArray(services) ? (services as string[]) : [],
     paymentProofs: Array.isArray(paymentProofs) ? (paymentProofs as string[]) : [],
     serviceDate: serviceDate ? dateOnlyStringUTC(serviceDate) : null,
@@ -81,9 +85,10 @@ function customerOf(c: Prisma.CustomerGetPayload<{ include: typeof customerInclu
 
 // Translate the app-level customer fields into Prisma's column types.
 function customerData(data: Partial<CustomerInput>) {
-  const { services, serviceDate, paymentProofs, ...rest } = data;
+  const { services, serviceDate, paymentProofs, payments, ...rest } = data;
   return {
     ...rest,
+    ...(payments !== undefined ? { payments: payments as unknown as Prisma.InputJsonValue } : {}),
     ...(paymentProofs !== undefined ? { paymentProofs: paymentProofs as Prisma.InputJsonValue } : {}),
     ...(services !== undefined ? { services: services as Prisma.InputJsonValue } : {}),
     ...(serviceDate !== undefined ? { serviceDate: serviceDate ? parseDateOnlyUTC(serviceDate) : null } : {}),
@@ -120,6 +125,7 @@ function requestOf(r: Prisma.CustomerRequestGetPayload<{ include: { reviewedBy: 
     budgetQuote: r.budgetQuote,
     amountPaid: r.amountPaid,
     paymentProofs: Array.isArray(r.paymentProofs) ? (r.paymentProofs as string[]) : [],
+    payments: Array.isArray(r.payments) ? (r.payments as unknown as PaymentRecord[]) : [],
   };
 }
 
@@ -379,7 +385,7 @@ const actions: Backend["actions"] = {
 
 const requests: Backend["requests"] = {
   list: async () => {
-    const rows = await prisma.customerRequest.findMany({ orderBy: { createdAt: "desc" }, take: 200, include: { reviewedBy: { select: { name: true } } } });
+    const rows = await prisma.customerRequest.findMany({ orderBy: { createdAt: "desc" }, take: 2000, include: { reviewedBy: { select: { name: true } } } });
     return rows.map(requestOf);
   },
   pendingCount: () => prisma.customerRequest.count({ where: { status: "PENDING" } }),
@@ -391,12 +397,13 @@ const requests: Backend["requests"] = {
     return requestOf(r);
   },
   update: async (id, patch) => {
-    const { dateNeeded, services, paymentProofs, ...rest } = patch;
+    const { dateNeeded, services, paymentProofs, payments, ...rest } = patch;
     await prisma.customerRequest.update({
       where: { id },
       data: {
         ...rest,
         ...(paymentProofs !== undefined ? { paymentProofs: paymentProofs as Prisma.InputJsonValue } : {}),
+        ...(payments !== undefined ? { payments: payments as unknown as Prisma.InputJsonValue } : {}),
         ...(services !== undefined ? { services: services as Prisma.InputJsonValue } : {}),
         ...(dateNeeded ? { dateNeeded: parseDateOnlyUTC(dateNeeded) } : {}),
       },
@@ -429,6 +436,8 @@ const requests: Backend["requests"] = {
             paymentStatus: req.paymentStatus,
             projectValue: req.budgetQuote,
             paymentProofs: Array.isArray(req.paymentProofs) ? (req.paymentProofs as Prisma.InputJsonValue) : [],
+            payments: Array.isArray(req.payments) ? (req.payments as Prisma.InputJsonValue) : [],
+            amountPaid: req.amountPaid,
           },
         },
       },
@@ -473,5 +482,62 @@ const schedules: Backend["schedules"] = {
   },
 };
 
-const backend: Backend = { users, customers, templates, audits, actions, requests, schedules };
+const DEFAULT_EMAIL_TEMPLATES = [
+  {
+    name: "Send audit report",
+    subject: "Your audit report — {{audit_number}}",
+    body: "Hello {{contact_name}},\n\nYour audit ({{audit_title}}) for {{customer_name}} is complete. The report is attached to this email as a PDF.\n\nIf you have any questions, just reply to this message.\n\nThank you,\n{{site_name}}",
+    attachReport: true,
+  },
+  {
+    name: "Follow-up",
+    subject: "Following up on your audit — {{audit_number}}",
+    body: "Hello {{contact_name}},\n\nWe wanted to follow up on the audit ({{audit_title}}) carried out by {{auditor_name}}. Please let us know if you need anything further.\n\nThank you,\n{{site_name}}",
+    attachReport: false,
+  },
+];
+
+const toEmailTemplate = (t: { id: string; name: string; subject: string; body: string; attachReport: boolean; createdAt: Date; updatedAt: Date }): EmailTemplate => t;
+
+const emailTemplates: Backend["emailTemplates"] = {
+  list: async () => {
+    // First use: seed the two starter templates (only when none exist yet).
+    if ((await prisma.emailTemplate.count()) === 0) await prisma.emailTemplate.createMany({ data: DEFAULT_EMAIL_TEMPLATES });
+    return (await prisma.emailTemplate.findMany({ orderBy: { name: "asc" } })).map(toEmailTemplate);
+  },
+  create: async (data) => toEmailTemplate(await prisma.emailTemplate.create({ data })),
+  update: async (id, data) => toEmailTemplate(await prisma.emailTemplate.update({ where: { id }, data })),
+  remove: async (id) => {
+    await prisma.emailTemplate.delete({ where: { id } });
+  },
+};
+
+// Outgoing email on the Postgres deployment goes through Resend (https://resend.com).
+// Set RESEND_API_KEY and MAIL_FROM (e.g. "TAP Services <reports@tapsvs.com>") to turn it on.
+const mail: Backend["mail"] = {
+  send: async (m: MailMessage) => {
+    const key = process.env.RESEND_API_KEY;
+    const from = process.env.MAIL_FROM;
+    if (!key || !from) {
+      throw new RepoError(501, "mail_not_configured", "Email sending isn't set up on this site yet (RESEND_API_KEY and MAIL_FROM are missing).");
+    }
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: [m.to],
+        subject: m.subject,
+        text: m.body,
+        attachments: m.attachments?.map((a) => ({ filename: a.filename, content: a.contentBase64 })),
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => null);
+      throw new RepoError(502, "mail_failed", detail?.message ? `Email failed: ${detail.message}` : "The email service rejected the message.");
+    }
+  },
+};
+
+const backend: Backend = { users, customers, templates, audits, actions, requests, schedules, emailTemplates, mail };
 export default backend;

@@ -38,7 +38,7 @@ function tap_ops_progress_statuses() {
  * uploaded-file path or an image/PDF data URL. Returns the clean list, or null if the value is malformed.
  */
 function tap_ops_proof_list( $value ) {
-	if ( ! is_array( $value ) || count( $value ) > 10 ) {
+	if ( ! is_array( $value ) || count( $value ) > 20 ) {
 		return null;
 	}
 	$out = array();
@@ -53,6 +53,39 @@ function tap_ops_proof_list( $value ) {
 		$out[] = $v;
 	}
 	return array_values( array_unique( $out ) );
+}
+
+/**
+ * Payment records: [{id, amount, method, date, transactionId, proofs[], recordedAt}], up to 20.
+ * Returns the cleaned list, or null if anything is malformed.
+ */
+function tap_ops_payments_in( $value ) {
+	if ( ! is_array( $value ) || count( $value ) > 20 ) {
+		return null;
+	}
+	$out = array();
+	foreach ( $value as $p ) {
+		if ( ! is_array( $p ) ) {
+			return null;
+		}
+		$amount = isset( $p['amount'] ) ? tap_ops_money_in( $p['amount'] ) : false;
+		$date   = isset( $p['date'] ) ? tap_ops_valid_date( $p['date'] ) : null;
+		$method = isset( $p['method'] ) ? $p['method'] : '';
+		$proofs = isset( $p['proofs'] ) ? tap_ops_proof_list( $p['proofs'] ) : array();
+		if ( false === $amount || null === $amount || null === $date || ! in_array( $method, array( 'PayPal', 'Bank Transfer' ), true ) || null === $proofs ) {
+			return null;
+		}
+		$out[] = array(
+			'id'            => isset( $p['id'] ) ? tap_ops_text( $p['id'], 64 ) : wp_generate_password( 10, false ),
+			'amount'        => $amount,
+			'method'        => $method,
+			'date'          => $date,
+			'transactionId' => isset( $p['transactionId'] ) ? tap_ops_text( $p['transactionId'], 120 ) : '',
+			'proofs'        => $proofs,
+			'recordedAt'    => isset( $p['recordedAt'] ) ? tap_ops_text( $p['recordedAt'], 40 ) : gmdate( 'c' ),
+		);
+	}
+	return $out;
 }
 
 /** Money input: null/'' -> null, a non-negative number -> rounded float, anything else -> false. */
@@ -89,6 +122,8 @@ function tap_ops_customer_out( array $r ) {
 		'projectValue'        => isset( $r['project_value'] ) && null !== $r['project_value'] ? (float) $r['project_value'] : null,
 		'progressStatus'      => isset( $r['progress_status'] ) && '' !== $r['progress_status'] ? (string) $r['progress_status'] : 'In progress',
 		'paymentProofs'       => array_values( (array) tap_ops_json_out( isset( $r['payment_proofs'] ) ? $r['payment_proofs'] : null, array() ) ),
+		'payments'            => array_values( (array) tap_ops_json_out( isset( $r['payments'] ) ? $r['payments'] : null, array() ) ),
+		'amountPaid'          => isset( $r['amount_paid'] ) ? (float) $r['amount_paid'] : 0.0,
 	);
 }
 
@@ -163,6 +198,20 @@ function tap_ops_customer_input( array $b, $partial, $current = null ) {
 			return tap_ops_err( 422, 'validation', 'paymentProofs must be up to 10 image/PDF links.' );
 		}
 		$data['payment_proofs'] = tap_ops_json_in( $proofs );
+	}
+	if ( array_key_exists( 'payments', $b ) ) {
+		$pay = tap_ops_payments_in( $b['payments'] );
+		if ( null === $pay ) {
+			return tap_ops_err( 422, 'validation', 'payments is invalid.' );
+		}
+		$data['payments'] = tap_ops_json_in( $pay );
+	}
+	if ( array_key_exists( 'amountPaid', $b ) ) {
+		$m = tap_ops_money_in( $b['amountPaid'] );
+		if ( false === $m ) {
+			return tap_ops_err( 422, 'validation', 'amountPaid must be a non-negative number.' );
+		}
+		$data['amount_paid'] = null === $m ? 0 : $m;
 	}
 	if ( array_key_exists( 'paymentStatus', $b ) ) {
 		if ( ! in_array( $b['paymentStatus'], tap_ops_payment_statuses(), true ) ) {

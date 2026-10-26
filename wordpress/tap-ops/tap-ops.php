@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'TAP_OPS_VERSION', '1.0.0' );
-define( 'TAP_OPS_DB_VERSION', '3' );
+define( 'TAP_OPS_DB_VERSION', '4' );
 define( 'TAP_OPS_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once TAP_OPS_DIR . 'includes/helpers.php';
@@ -23,6 +23,7 @@ require_once TAP_OPS_DIR . 'includes/db.php';
 require_once TAP_OPS_DIR . 'includes/auth.php';
 require_once TAP_OPS_DIR . 'includes/users.php';
 require_once TAP_OPS_DIR . 'includes/customers.php';
+require_once TAP_OPS_DIR . 'includes/email.php';
 require_once TAP_OPS_DIR . 'includes/templates.php';
 require_once TAP_OPS_DIR . 'includes/audits.php';
 require_once TAP_OPS_DIR . 'includes/actions.php';

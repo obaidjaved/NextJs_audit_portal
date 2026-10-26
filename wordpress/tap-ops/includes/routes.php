@@ -148,6 +148,23 @@ function tap_ops_register_routes() {
 		)
 	);
 
+	// Email templates + sending.
+	$add(
+		'/email-templates',
+		array(
+			array( 'GET', 'tap_ops_h_email_templates_list', 'staff' ),
+			array( 'POST', 'tap_ops_h_email_template_create', 'admin' ),
+		)
+	);
+	$add(
+		"/email-templates/$id",
+		array(
+			array( 'PATCH', 'tap_ops_h_email_template_patch', 'admin' ),
+			array( 'DELETE', 'tap_ops_h_email_template_delete', 'admin' ),
+		)
+	);
+	$add( '/mail/send', array( array( 'POST', 'tap_ops_h_mail_send', 'staff' ) ) );
+
 	// Customer requests.
 	$add(
 		'/requests',

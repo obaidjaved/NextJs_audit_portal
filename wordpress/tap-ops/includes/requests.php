@@ -38,6 +38,7 @@ function tap_ops_request_out( array $r ) {
 		'budgetQuote'    => isset( $r['budget_quote'] ) && null !== $r['budget_quote'] ? (float) $r['budget_quote'] : null,
 		'amountPaid'     => isset( $r['amount_paid'] ) ? (float) $r['amount_paid'] : 0.0,
 		'paymentProofs'  => array_values( (array) tap_ops_json_out( isset( $r['payment_proofs'] ) ? $r['payment_proofs'] : null, array() ) ),
+		'payments'       => array_values( (array) tap_ops_json_out( isset( $r['payments'] ) ? $r['payments'] : null, array() ) ),
 	);
 }
 
@@ -185,6 +186,13 @@ function tap_ops_h_request_patch( WP_REST_Request $request ) {
 		}
 		$d['payment_proofs'] = tap_ops_json_in( $proofs );
 	}
+	if ( array_key_exists( 'payments', $b ) ) {
+		$pay = tap_ops_payments_in( $b['payments'] );
+		if ( null === $pay ) {
+			return tap_ops_err( 422, 'validation', 'payments is invalid.' );
+		}
+		$d['payments'] = tap_ops_json_in( $pay );
+	}
 	if ( array_key_exists( 'services', $b ) ) {
 		$list = tap_ops_string_list( $b['services'] );
 		if ( null === $list ) {
@@ -234,7 +242,7 @@ function tap_ops_h_request_patch( WP_REST_Request $request ) {
 function tap_ops_h_requests_list() {
 	global $wpdb;
 	$t = tap_ops_t( 'requests' );
-	return array_map( 'tap_ops_request_out', (array) $wpdb->get_results( "SELECT * FROM $t ORDER BY created_at DESC, id DESC LIMIT 200", ARRAY_A ) ); // phpcs:ignore
+	return array_map( 'tap_ops_request_out', (array) $wpdb->get_results( "SELECT * FROM $t ORDER BY created_at DESC, id DESC LIMIT 2000", ARRAY_A ) ); // phpcs:ignore
 }
 
 function tap_ops_h_requests_pending_count() {
@@ -300,6 +308,8 @@ function tap_ops_h_request_approve( WP_REST_Request $request ) {
 			'payment_status' => '' !== (string) $row['payment_status'] ? $row['payment_status'] : 'None',
 			'project_value'  => $row['budget_quote'],
 			'payment_proofs' => $row['payment_proofs'],
+			'payments'       => $row['payments'],
+			'amount_paid'    => $row['amount_paid'],
 			'created_at'     => tap_ops_now(),
 		)
 	);

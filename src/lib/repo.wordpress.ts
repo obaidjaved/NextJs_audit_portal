@@ -13,6 +13,8 @@ import type {
   ActionInput,
   CustomerRequest,
   Schedule,
+  EmailTemplate,
+  PaymentRecord,
 } from "@/lib/repo-types";
 
 // WordPress-backed implementation, talking to the `tap-ops` plugin's REST API
@@ -36,6 +38,8 @@ function customerOf(c: Record<string, unknown>): Customer {
     createdAt: toDate(c.createdAt),
     services: asArr<string>(c.services),
     paymentProofs: asArr<string>(c.paymentProofs),
+    payments: asArr<PaymentRecord>(c.payments),
+    amountPaid: Number(c.amountPaid ?? 0),
     assignedAt: toDateOrNull(c.assignedAt),
   };
 }
@@ -61,6 +65,7 @@ function requestOf(r: Record<string, unknown>): CustomerRequest {
     ...(r as unknown as CustomerRequest),
     services: asArr<string>(r.services),
     paymentProofs: asArr<string>(r.paymentProofs),
+    payments: asArr<PaymentRecord>(r.payments),
     trainings: asArr<string>(r.trainings),
     reviewedAt: toDateOrNull(r.reviewedAt),
     createdAt: toDate(r.createdAt),
@@ -197,5 +202,27 @@ const schedules: Backend["schedules"] = {
   },
 };
 
-const backend: Backend = { users, customers, templates, audits, actions, requests, schedules };
+const templateOf2 = (t: Record<string, unknown>): EmailTemplate => ({
+  ...(t as unknown as EmailTemplate),
+  createdAt: toDate(t.createdAt),
+  updatedAt: toDate(t.updatedAt),
+});
+
+const emailTemplates: Backend["emailTemplates"] = {
+  list: async () => (await wp<Record<string, unknown>[]>("/email-templates", { userId: await actor() })).map(templateOf2),
+  create: async (data) => templateOf2(await wp<Record<string, unknown>>("/email-templates", { method: "POST", body: data, userId: await actor() })),
+  update: async (id, data) => templateOf2(await wp<Record<string, unknown>>(`/email-templates/${id}`, { method: "PATCH", body: data, userId: await actor() })),
+  remove: async (id) => {
+    await wp(`/email-templates/${id}`, { method: "DELETE", userId: await actor() });
+  },
+};
+
+// Email is sent by WordPress itself (wp_mail), through whatever mail setup the site already has.
+const mail: Backend["mail"] = {
+  send: async (message) => {
+    await wp("/mail/send", { method: "POST", body: message, userId: await actor() });
+  },
+};
+
+const backend: Backend = { users, customers, templates, audits, actions, requests, schedules, emailTemplates, mail };
 export default backend;

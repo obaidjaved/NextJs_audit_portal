@@ -3,27 +3,23 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireStaff } from "@/lib/access";
-import { customers, requests } from "@/lib/repo";
-import { LEAD_STATUSES, PAYMENT_STATUSES, PROGRESS_STATUSES } from "@/lib/ops-options";
+import { customers, requests, RepoError, type CustomerInput } from "@/lib/repo";
+import { LEAD_STATUSES } from "@/lib/ops-options";
 import { ALL_SERVICES } from "@/lib/quote-options";
 import { parseOrThrow } from "@/lib/validation/parse";
+import { allProofs, makePayment, paymentDetailsSchema, sumPayments } from "@/lib/payments";
 import { attempt, type ActionResult } from "./result";
 
 const services = z.array(z.enum(ALL_SERVICES as [string, ...string[]]));
 
 const money = z.number().min(0, "Must be 0 or more").max(999_999_999).nullable();
 
-// Payment proof files: an https link (Blob storage), an uploaded file path (/uploads/…), or inline image/PDF data.
-const isProofRef = (s: string) => /^(https:\/\/|\/uploads\/|data:image\/|data:application\/pdf)/.test(s);
-
+// Payments are recorded only through convertLead / completeCustomer below, so they aren't editable here.
 const leadPatchSchema = z
   .object({
     services: services.min(1, "Choose at least one service"),
-    paymentProofs: z.array(z.string().max(3_000_000).refine(isProofRef, "Not a valid file")).max(10, "Up to 10 files"),
     leadStatus: z.enum(LEAD_STATUSES),
-    paymentStatus: z.enum(PAYMENT_STATUSES),
     budgetQuote: money,
-    amountPaid: z.number().min(0, "Must be 0 or more").max(999_999_999),
     dateNeeded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date"),
   })
   .partial()
@@ -45,8 +41,8 @@ export async function updateLead(id: string, input: unknown): Promise<ActionResu
 const customerOpsSchema = z
   .object({
     services,
-    paymentStatus: z.enum(PAYMENT_STATUSES),
-    progressStatus: z.enum(PROGRESS_STATUSES),
+    // "Completed" goes through completeCustomer, which records the final payment first.
+    progressStatus: z.enum(["In progress", "Rescheduled"]),
     projectValue: money,
     serviceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date").nullable(),
     assignedAuditorId: z.string().min(1).nullable(),
@@ -62,5 +58,84 @@ export async function updateCustomerOps(id: string, input: unknown): Promise<Act
     else await requireStaff();
     await customers.update(id, patch as never);
     revalidatePath("/customers");
+  });
+}
+
+// ---- Converting a lead ----------------------------------------------------
+
+const convertSchema = paymentDetailsSchema.extend({
+  totalAmount: z.number().positive("Enter the total amount of the deal").max(999_999_999),
+  status: z.enum(["Full Payment", "Partial"], { message: "Choose Fully paid or Partial" }),
+  amountPaid: z.number().positive("Enter the amount paid").max(999_999_999),
+});
+
+// Admin turns a lead into a customer. They must record the payment received
+// (amount, method, date, transaction id and a screenshot), which is kept on
+// the customer from then on.
+export async function convertLead(id: string, input: unknown): Promise<ActionResult<{ customerId: string | null }>> {
+  return attempt(async () => {
+    await requireAdmin();
+    const data = parseOrThrow(convertSchema, input);
+    // "Fully paid" means the whole deal was paid; "Partial" must be less than the total.
+    const paid = data.status === "Full Payment" ? data.totalAmount : data.amountPaid;
+    if (data.status === "Partial" && paid >= data.totalAmount) {
+      throw new Error("A partial payment must be less than the total amount. Choose “Fully paid” if the whole amount was paid.");
+    }
+    const lead = (await requests.list()).find((r) => r.id === id);
+    if (!lead) throw new Error("This lead no longer exists.");
+    if (lead.status !== "PENDING") throw new Error("This lead was already converted or rejected.");
+
+    const payment = makePayment(paid, data);
+    await requests.update(id, {
+      budgetQuote: data.totalAmount,
+      amountPaid: sumPayments([payment]),
+      paymentStatus: data.status,
+      paymentProofs: allProofs([payment]),
+      payments: [payment],
+      leadStatus: "Converted",
+    });
+    try {
+      const { customerId } = await requests.approve(id);
+      revalidatePath("/leads");
+      revalidatePath("/customers");
+      return { customerId };
+    } catch (err) {
+      if (err instanceof RepoError && (err.status === 409 || err.status === 404)) {
+        throw new Error("This lead was already converted or no longer exists.");
+      }
+      throw err;
+    }
+  });
+}
+
+// ---- Completing a customer's query -----------------------------------------
+
+// Admin marks a customer's query Completed. If the deal isn't fully paid yet
+// the final instalment (the remaining balance) must be recorded first. Returns
+// whether payment is now complete so the screen can remind the admin to send the report.
+export async function completeCustomer(id: string, input?: unknown): Promise<ActionResult<{ reminder: boolean }>> {
+  return attempt(async () => {
+    await requireAdmin();
+    const customer = await customers.get(id);
+    if (!customer) throw new Error("This customer no longer exists.");
+
+    const patch: Partial<CustomerInput> = { progressStatus: "Completed" };
+    if (customer.paymentStatus !== "Full Payment") {
+      const total = customer.projectValue;
+      if (total === null) throw new Error("Set the total amount of the deal before completing this query.");
+      // The final instalment is whatever is still owed.
+      const balance = Math.round((total - customer.amountPaid) * 100) / 100;
+      if (balance > 0) {
+        const details = parseOrThrow(paymentDetailsSchema, input);
+        const payments = [...customer.payments, makePayment(balance, details)];
+        patch.payments = payments;
+        patch.amountPaid = sumPayments(payments);
+        patch.paymentProofs = allProofs(payments);
+      }
+      patch.paymentStatus = "Full Payment";
+    }
+    await customers.update(id, patch);
+    revalidatePath("/customers");
+    return { reminder: true };
   });
 }
