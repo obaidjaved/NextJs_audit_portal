@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { audits } from "@/lib/repo";
 import { buildAuditPdf } from "@/lib/audit-pdf";
 
+export const maxDuration = 30;
+
 // GET /api/audits/{id}/pdf            -> downloads the report
 // GET /api/audits/{id}/pdf?inline=1   -> shows it in the browser (preview)
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {

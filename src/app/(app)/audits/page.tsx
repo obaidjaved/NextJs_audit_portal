@@ -6,6 +6,9 @@ import { mergeValuesFor } from "@/lib/email-merge";
 import { serviceTypesOf } from "@/lib/ops-options";
 import { AuditsTable, type AuditListRow } from "@/components/audits/AuditsTable";
 
+// The email action runs here: building the PDF and handing it to the mail server can take a while.
+export const maxDuration = 60;
+
 export default async function AuditsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = "" } = await searchParams;
   const user = await requireUser();
@@ -54,6 +57,7 @@ export default async function AuditsPage({ searchParams }: { searchParams: Promi
       <AuditsTable
         audits={rows}
         initialQuery={q}
+        canManageTemplates={user.role === "ADMIN"}
         templates={templates.map((t) => ({ id: t.id, name: t.name, subject: t.subject, body: t.body, attachReport: t.attachReport }))}
       />
     </div>

@@ -25,6 +25,7 @@ export function EmailDialog({
   values,
   completed,
   templates,
+  canManage,
   onClose,
 }: {
   auditId: string;
@@ -33,6 +34,7 @@ export function EmailDialog({
   values: MergeValues;
   completed: boolean; // only a completed, approved audit has a report to attach
   templates: EmailTemplateRow[];
+  canManage?: boolean; // administrators can add and edit templates
   onClose: () => void;
 }) {
   const [templateId, setTemplateId] = useState("");
@@ -84,6 +86,11 @@ export function EmailDialog({
                   </option>
                 ))}
               </select>
+              {canManage && (
+                <a href="/email-templates" style={{ display: "inline-block", marginTop: 6, fontSize: 12.5, textDecoration: "underline", color: "var(--ink-2)" }}>
+                  Add or edit templates
+                </a>
+              )}
             </div>
             <div className="dtl-wide">
               <Label>To</Label>

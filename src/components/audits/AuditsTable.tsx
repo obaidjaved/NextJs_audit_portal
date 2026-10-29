@@ -48,7 +48,17 @@ const COLS: [string, string][] = [
   ["", "25%"],
 ];
 
-export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: AuditListRow[]; templates: EmailTemplateRow[]; initialQuery?: string }) {
+export function AuditsTable({
+  audits,
+  templates,
+  canManageTemplates = false,
+  initialQuery = "",
+}: {
+  audits: AuditListRow[];
+  templates: EmailTemplateRow[];
+  canManageTemplates?: boolean;
+  initialQuery?: string;
+}) {
   const [search, setSearch] = useState(initialQuery);
   const [status, setStatus] = useState("All");
   const [auditor, setAuditor] = useState("All");
@@ -225,6 +235,7 @@ export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: 
           values={emailing.merge}
           completed={emailing.completed}
           templates={templates}
+          canManage={canManageTemplates}
           onClose={() => setEmailId(null)}
         />
       )}

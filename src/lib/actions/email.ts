@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireStaff } from "@/lib/access";
-import { audits, customers, emailTemplates, mail } from "@/lib/repo";
+import { audits, customers, emailTemplates, mail, RepoError } from "@/lib/repo";
 import { buildAuditPdf } from "@/lib/audit-pdf";
 import { applyMerge, mergeValuesFor } from "@/lib/email-merge";
 import { serviceTypesOf } from "@/lib/ops-options";
@@ -41,7 +41,14 @@ export async function sendAuditEmail(auditId: string, input: unknown): Promise<A
       attachments.push({ filename: `${audit.docNumber}.pdf`, contentType: "application/pdf", contentBase64: Buffer.from(pdf).toString("base64") });
     }
 
-    await mail.send({ to: data.to, subject, body, attachments });
+    try {
+      await mail.send({ to: data.to, subject, body, attachments });
+    } catch (err) {
+      if (err instanceof RepoError && err.code === "backend_unreachable") {
+        throw new Error("The mail server took too long to answer. The email may still have been sent — check with the customer before sending it again.");
+      }
+      throw err;
+    }
     await logEvent(auditId, user.id, `Email sent to ${data.to}${attachments.length ? " with the report attached" : ""}`);
     revalidatePath(`/audits/${auditId}`);
   });

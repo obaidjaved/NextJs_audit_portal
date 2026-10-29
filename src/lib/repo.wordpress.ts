@@ -220,7 +220,8 @@ const emailTemplates: Backend["emailTemplates"] = {
 // Email is sent by WordPress itself (wp_mail), through whatever mail setup the site already has.
 const mail: Backend["mail"] = {
   send: async (message) => {
-    await wp("/mail/send", { method: "POST", body: message, userId: await actor() });
+    // Sending (especially through an SMTP plugin, with a PDF attached) is slower than a normal API call.
+    await wp("/mail/send", { method: "POST", body: message, userId: await actor(), timeoutMs: 45_000 });
   },
 };
 
