@@ -2,9 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { CalendarGrid, type CalendarEvent } from "@/components/calendar/CalendarGrid";
-import { occurrencesInRange, parseLocalDate } from "@/lib/schedule";
+import { occurrencesInRange, parseLocalDate, type ScheduleFrequency } from "@/lib/schedule";
 import { initials } from "@/lib/initials";
-import type { ScheduleRow } from "./ScheduleList";
+
+export interface ScheduleRow {
+  id: string;
+  title: string;
+  templateId: string;
+  templateName: string;
+  customerId: string;
+  customerName: string;
+  frequency: ScheduleFrequency;
+  startDate: string; // "YYYY-MM-DD" date-only, not a full ISO instant
+  active: boolean;
+}
 
 export function ScheduleCalendarView({ schedules }: { schedules: ScheduleRow[] }) {
   const [year, setYear] = useState(() => new Date().getFullYear());
