@@ -6,6 +6,9 @@ import { TopBar } from "@/components/shell/TopBar";
 import { BottomTabBar } from "@/components/shell/BottomTabBar";
 import { SignOutButton } from "@/components/shell/SignOutButton";
 
+// Pages here call the WordPress backend (and retry once if it is slow to wake), so allow more than the default.
+export const maxDuration = 60;
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Two independent queries: run them together instead of one after the other.
   // requireUser() shares the memoized auth() call with the rest of the render,

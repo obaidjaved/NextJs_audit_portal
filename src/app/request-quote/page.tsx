@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { QuoteForm } from "@/components/quote/QuoteForm";
 
+// The form submits to WordPress, which can be slow to wake: allow more than the default.
+export const maxDuration = 60;
+
 // Public, unauthenticated. Submissions land in the portal under Customers > New Requests.
 export const metadata: Metadata = {
   title: "Request a Quote | TAP Services",

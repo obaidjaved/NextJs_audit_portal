@@ -181,7 +181,14 @@ const requests: Backend["requests"] = {
   pendingCount: async () => (await wp<{ count: number }>("/requests/pending-count", { userId: await actor() })).count,
   // Public intake: no signed-in user, matching the API contract.
   create: async (data, opts) =>
-    requestOf(await wp<Record<string, unknown>>("/requests", { method: "POST", body: opts?.manual ? { ...data, source: "manual" } : data })),
+    requestOf(
+      await wp<Record<string, unknown>>("/requests", {
+        method: "POST",
+        body: opts?.manual ? { ...data, source: "manual" } : data,
+        timeoutMs: 25_000,
+        retryUnavailable: true,
+      }),
+    ),
   update: async (id, patch) => {
     await wp(`/requests/${id}`, { method: "PATCH", body: patch, userId: await actor() });
   },

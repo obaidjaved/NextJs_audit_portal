@@ -12,12 +12,21 @@ export default async function ConsolePage() {
   const userName = user.name ?? user.email ?? "there";
   const firstName = userName.split(" ")[0];
 
-  const [auditRows, templateRows, customerRows, leadRows] = await Promise.all([
+  // One slow or failing list shouldn't take the whole Console down: show what loaded and "—" for the rest.
+  const [auditsR, templatesR, customersR, leadsR] = await Promise.allSettled([
     auditsRepo.list({ noResponses: true }),
     templatesRepo.list(),
     customersRepo.list(),
     requestsRepo.list(),
   ]);
+  const loaded = <T,>(r: PromiseSettledResult<T[]>): T[] | null => (r.status === "fulfilled" ? r.value : null);
+  const auditList = loaded(auditsR);
+  const customerList = loaded(customersR);
+  const leadList = loaded(leadsR);
+  const templateRows = loaded(templatesR) ?? [];
+  const auditRows = auditList ?? [];
+  const customerRows = customerList ?? [];
+  const incomplete = !auditList || !customerList || !leadList || templatesR.status === "rejected";
 
   const recentTemplates = [...templateRows].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 4).map((t) => ({ id: t.id, name: t.name }));
   const recentCustomers = [...customerRows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 4).map((c) => ({ id: c.id, name: c.name }));
@@ -41,12 +50,14 @@ export default async function ConsolePage() {
   // The five numbers. They count the same lines as the Audits tab, so each card matches the list it opens.
   const todayKey = dateOnlyStringUTC(new Date());
   const lines = buildAuditRows(auditRows, customerRows);
+  const countView = (view: "completed" | "unassigned" | "upcoming") =>
+    auditList && customerList ? lines.filter((r) => matchesView(r, view, todayKey)).length : null;
   const cards = [
-    { label: "Leads", value: leadRows.length, href: "/leads" },
-    { label: "Customers", value: customerRows.length, href: "/customers" },
-    { label: "Audits completed", value: lines.filter((r) => matchesView(r, "completed", todayKey)).length, href: "/audits?view=completed" },
-    { label: "Audits to be assigned", value: lines.filter((r) => matchesView(r, "unassigned", todayKey)).length, href: "/audits?view=unassigned" },
-    { label: "Audits coming up", value: lines.filter((r) => matchesView(r, "upcoming", todayKey)).length, href: "/audits?view=upcoming" },
+    { label: "Leads", value: leadList ? leadList.length : null, href: "/leads" },
+    { label: "Customers", value: customerList ? customerList.length : null, href: "/customers" },
+    { label: "Audits completed", value: countView("completed"), href: "/audits?view=completed" },
+    { label: "Audits to be assigned", value: countView("unassigned"), href: "/audits?view=unassigned" },
+    { label: "Audits coming up", value: countView("upcoming"), href: "/audits?view=upcoming" },
   ];
 
   return (
@@ -55,6 +66,12 @@ export default async function ConsolePage() {
         <h1 className="disp" style={{ fontSize: 24, fontWeight: 800 }}>Welcome back, {firstName}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: 13.5, marginTop: 4 }}>Here is where things stand.</p>
       </div>
+
+      {incomplete && (
+        <p role="status" style={{ color: "var(--ink-2)", fontSize: 13 }}>
+          Some figures couldn&apos;t be loaded just now (the server was slow to answer). Reload the page to try again.
+        </p>
+      )}
 
       <ConsoleCards cards={cards} />
 

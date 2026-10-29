@@ -17,9 +17,26 @@ export interface WpRequest {
   userId?: string;
   /** Abort the request after this many ms instead of hanging indefinitely. Default 8000. */
   timeoutMs?: number;
+  /** Repeat a write once if the host answered 502/503 (it never reached WordPress, so nothing was saved). Reads always retry. */
+  retryUnavailable?: boolean;
 }
 
+// The WordPress host is slow to wake up now and then (a first request can take several seconds, or return a 502/503/504).
+// Reads are safe to repeat, so they get one more try before the page gives up; writes are never repeated.
 export async function wp<T>(path: string, req: WpRequest = {}): Promise<T> {
+  const isRead = (req.method ?? "GET") === "GET";
+  try {
+    return await wpOnce<T>(path, req);
+  } catch (err) {
+    if (!(err instanceof RepoError)) throw err;
+    // A timeout (504) may have been saved anyway, so only reads repeat on it.
+    const retry = isRead ? [502, 503, 504].includes(err.status) : !!req.retryUnavailable && [502, 503].includes(err.status);
+    if (!retry) throw err;
+    return wpOnce<T>(path, req);
+  }
+}
+
+async function wpOnce<T>(path: string, req: WpRequest): Promise<T> {
   const { base, key } = config();
   const url = new URL(base + path);
   for (const [k, v] of Object.entries(req.query ?? {})) {

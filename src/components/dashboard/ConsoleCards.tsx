@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export interface ConsoleCount {
   label: string;
-  value: number;
+  value: number | null; // null = could not be loaded
   href: string;
 }
 
@@ -13,7 +13,7 @@ export function ConsoleCards({ cards }: { cards: ConsoleCount[] }) {
       {cards.map((c) => (
         <Link key={c.label} href={c.href} className="console-card card">
           <span className="console-card-label">{c.label}</span>
-          <span className="console-card-value">{c.value}</span>
+          <span className="console-card-value">{c.value ?? "—"}</span>
         </Link>
       ))}
     </div>
