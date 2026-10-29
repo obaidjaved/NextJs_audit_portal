@@ -25,6 +25,7 @@ export function EmailDialog({
   values,
   completed,
   templates,
+  defaultTemplateId,
   canManage,
   onClose,
 }: {
@@ -34,14 +35,16 @@ export function EmailDialog({
   values: MergeValues;
   completed: boolean; // only a completed, approved audit has a report to attach
   templates: EmailTemplateRow[];
+  defaultTemplateId?: string; // start with this template already filled in
   canManage?: boolean; // administrators can add and edit templates
   onClose: () => void;
 }) {
-  const [templateId, setTemplateId] = useState("");
+  const first = templates.find((t) => t.id === defaultTemplateId);
+  const [templateId, setTemplateId] = useState(first?.id ?? "");
   const [to, setTo] = useState(initialTo);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [attach, setAttach] = useState(false);
+  const [subject, setSubject] = useState(first ? applyMerge(first.subject, values) : "");
+  const [body, setBody] = useState(first ? applyMerge(first.body, values) : "");
+  const [attach, setAttach] = useState(first ? first.attachReport && completed : false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();

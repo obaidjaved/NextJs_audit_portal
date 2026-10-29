@@ -3,26 +3,24 @@
 import Link from "next/link";
 import { updateCustomerOps } from "@/lib/actions/ops";
 import { PROGRESS_STATUSES, money } from "@/lib/ops-options";
-import { AuditorCombobox } from "@/components/ops/AuditorCombobox";
-import { InlineDate, InlineMoney, InlineSelect } from "@/components/ops/Inline";
+import { InlineDate, InlineSelect } from "@/components/ops/Inline";
 import { CallEmail, PaymentPill, fmtDate } from "@/components/ops/Parts";
 import { DetailField, DetailsDialog } from "@/components/ops/Dialog";
-import { PaymentsList } from "@/components/ops/Payments";
 import { ServicePicker } from "@/components/ops/ServicePicker";
 import type { CustomerOpsRow } from "./CustomersTable";
 
 // Everything about one customer, in a popup. Edits save as you go; Completed opens the payment check.
 export function CustomerDetails({
   customer: c,
-  auditors,
-  canAssign,
+  isAdmin,
   onClose,
+  onPayments,
   onComplete,
 }: {
   customer: CustomerOpsRow;
-  auditors: { id: string; name: string }[];
-  canAssign: boolean;
+  isAdmin: boolean;
   onClose: () => void;
+  onPayments: () => void;
   onComplete: () => void;
 }) {
   const contactName = c.contact?.split(",")[0]?.trim() ?? "";
@@ -41,12 +39,9 @@ export function CustomerDetails({
           <ServicePicker label="Services" kind="sub" services={c.services} onSave={(s) => updateCustomerOps(c.id, { services: s })} />
         </DetailField>
 
-        <DetailField label="Query assigned to">
-          {canAssign ? (
-            <AuditorCombobox value={c.assignedAuditorId} auditors={auditors} onSave={(id) => updateCustomerOps(c.id, { assignedAuditorId: id })} />
-          ) : (
-            c.assignedAuditorName ?? "Unassigned"
-          )}
+        <DetailField label="Assigned to">
+          {c.assignedAuditorName ?? <span style={{ color: "var(--ink-3)" }}>Not assigned yet</span>}
+          <div style={{ fontSize: 11.5, color: "var(--ink-2)", marginTop: 2 }}>Auditors are assigned on the Audits tab.</div>
         </DetailField>
         <DetailField label="Date query assigned">{c.assignedAuditorId ? fmtDate(c.assignedAt) : "—"}</DetailField>
 
@@ -54,13 +49,13 @@ export function CustomerDetails({
           <InlineDate label="Date service is needed by" value={c.serviceDate} onSave={(v) => updateCustomerOps(c.id, { serviceDate: v })} />
         </DetailField>
         <DetailField label="Status">
-          {c.progressStatus === "Completed" && !canAssign ? (
+          {c.progressStatus === "Completed" && !isAdmin ? (
             "Completed"
           ) : (
             <InlineSelect
               label="Status"
               value={c.progressStatus}
-              options={PROGRESS_STATUSES.filter((s) => s !== "Completed" || canAssign || c.progressStatus === "Completed")}
+              options={PROGRESS_STATUSES.filter((s) => s !== "Completed" || isAdmin || c.progressStatus === "Completed")}
               onSave={async (v) => {
                 if (v === "Completed") {
                   onComplete();
@@ -72,24 +67,16 @@ export function CustomerDetails({
           )}
         </DetailField>
 
-        <DetailField label="Total amount of deal">
-          <InlineMoney label="Total amount of deal" value={c.projectValue} onSave={(v) => updateCustomerOps(c.id, { projectValue: v })} />
-        </DetailField>
-        <DetailField label="Payment">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span><PaymentPill status={c.paymentStatus} /></span>
-            <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
-              Paid {money(c.amountPaid)}
+        <DetailField label="Payment" wide>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            <PaymentPill status={c.paymentStatus} />
+            <span style={{ fontSize: 13, color: "var(--ink-2)" }}>
+              {c.projectValue !== null ? `${money(c.amountPaid)} of ${money(c.projectValue)}` : `Paid ${money(c.amountPaid)}`}
               {balance !== null && balance > 0 ? ` · balance ${money(balance)}` : ""}
             </span>
+            <button type="button" className="btn ghost sm" onClick={onPayments}>View payments{isAdmin && c.paymentStatus !== "Full Payment" ? " / record one" : ""}</button>
           </div>
         </DetailField>
-
-        {c.payments.length > 0 && (
-          <DetailField label="Payments received" wide>
-            <PaymentsList payments={c.payments} />
-          </DetailField>
-        )}
 
         <DetailField label="Final report" wide>
           {c.finalReportId ? (

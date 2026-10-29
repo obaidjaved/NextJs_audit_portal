@@ -90,11 +90,20 @@ export function ServiceChips({ services, kind }: { services: string[]; kind: "ty
 }
 
 const PAY_TONE: Record<string, string> = { "Full Payment": "ok", Partial: "warn", None: "pending" };
+const PAY_LABEL: Record<string, string> = { "Full Payment": "Fully Paid", Partial: "Partial", None: "Not paid" };
 
-export function PaymentPill({ status }: { status: string }) {
-  return (
-    <span className={`pill ${PAY_TONE[status] ?? "pending"}`} style={{ textTransform: "none", letterSpacing: 0 }}>
-      {status === "None" ? "No payment" : status}
+// `onClick` turns it into a button (the Customers table opens the payment history from it).
+export function PaymentPill({ status, onClick }: { status: string; onClick?: () => void }) {
+  const cls = `pill ${PAY_TONE[status] ?? "pending"}`;
+  const style = { textTransform: "none", letterSpacing: 0 } as const;
+  const label = PAY_LABEL[status] ?? status;
+  return onClick ? (
+    <button type="button" className={cls} style={{ ...style, border: "none", cursor: "pointer" }} onClick={onClick} title="View payment history">
+      {label} ▸
+    </button>
+  ) : (
+    <span className={cls} style={style}>
+      {label}
     </span>
   );
 }

@@ -92,6 +92,8 @@ export async function updateAudit(id: string, input: unknown) {
       score,
       criticalFail,
       pendingApproval,
+      // Submitting again answers a "needs correction" request.
+      needsCorrection: data.draft ? undefined : false,
     });
 
     await logEvent(id, user.id, data.draft ? "Draft saved" : "Inspection submitted");
@@ -176,5 +178,27 @@ export async function setAuditSharing(id: string, enabled: boolean) {
     await logEvent(id, user.id, enabled ? "Public report link created" : "Public report link revoked");
     revalidatePath(`/audits/${id}`);
     return { shareToken };
+  });
+}
+
+// An admin reviews a submitted audit: approve it, or send it back to the auditor to be corrected.
+export async function setAuditReview(id: string, status: "Approved" | "Needs Correction") {
+  return attempt(async () => {
+    await requireAdmin();
+    if (status !== "Approved" && status !== "Needs Correction") throw new Error("Unknown status.");
+    const audit = await audits.get(id);
+    if (!audit) throw notFound("audit");
+    if (status === "Approved") {
+      if (audit.draft) throw new Error("This audit hasn't been submitted yet, so it can't be approved.");
+      await audits.update(id, { pendingApproval: false, needsCorrection: false });
+      await logEvent(id, undefined, "Approved for release");
+    } else {
+      // Back to the auditor as a draft; they fix it and submit it again.
+      await audits.update(id, { draft: true, pendingApproval: false, needsCorrection: true });
+      await logEvent(id, undefined, "Sent back for correction");
+    }
+    revalidatePath("/audits");
+    revalidatePath(`/audits/${id}`);
+    revalidatePath("/");
   });
 }

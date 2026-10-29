@@ -99,6 +99,7 @@ export interface Audit {
   criticalFail: boolean;
   draft: boolean;
   pendingApproval: boolean;
+  needsCorrection: boolean;
   date: Date;
   responses: unknown;
   notes: string;
@@ -121,6 +122,7 @@ export interface AuditWriteInput {
   criticalFail: boolean;
   draft: boolean;
   pendingApproval: boolean;
+  needsCorrection?: boolean;
   date?: string;
   responses: unknown;
   notes: string;

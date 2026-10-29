@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createLead, submitQuoteRequest } from "@/lib/actions/quote-requests";
+import { createCustomerWithPayment } from "@/lib/actions/ops";
+import { PaymentSection, checkPayment, emptyPayment, paymentPayload, type PaymentFormState } from "@/components/ops/PaymentSection";
 import { unwrap } from "@/lib/actions/result";
 import { SERVICE_GROUPS, US_STATES } from "@/lib/quote-options";
 
@@ -41,8 +43,22 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 // `internal` is the staff "Add lead" variant: same fields and validation, saved
 // through createLead, then back to the Leads list instead of a thank-you card.
-export function QuoteForm({ internal = false }: { internal?: boolean }) {
+// `customer` is the staff "New customer" variant: the same details plus the payment
+// received (nobody is recorded as a customer until they have paid); `embedded` drops the card styling for use in a popup.
+export function QuoteForm({
+  internal = false,
+  customer = false,
+  embedded = false,
+  onDone,
+}: {
+  internal?: boolean;
+  customer?: boolean;
+  embedded?: boolean;
+  onDone?: (customerId: string | null) => void;
+}) {
+  const staff = internal || customer;
   const router = useRouter();
+  const [payment, setPayment] = useState<PaymentFormState>(emptyPayment);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -59,9 +75,19 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
     e.preventDefault();
     setError(null);
     if (services.length === 0) return setError("Choose at least one type of service.");
-    if (internal && !f.phone.trim() && !f.email.trim()) return setError("Enter a phone number or an email address.");
+    if (staff && !f.phone.trim() && !f.email.trim()) return setError("Enter a phone number or an email address.");
+    if (customer) {
+      const problem = checkPayment(payment);
+      if (problem) return setError(problem);
+    }
     startTransition(async () => {
       try {
+        if (customer) {
+          const res = unwrap(await createCustomerWithPayment({ lead: { ...f, services }, payment: paymentPayload(payment) }));
+          router.refresh();
+          onDone?.(res.ok ? res.customerId : null);
+          return;
+        }
         if (internal) {
           unwrap(await createLead({ ...f, services }));
           router.push("/leads");
@@ -89,9 +115,13 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="card" style={{ padding: 28, display: "flex", flexDirection: "column", gap: 28 }}>
+    <form
+      onSubmit={submit}
+      className={embedded ? undefined : "card"}
+      style={{ padding: embedded ? 0 : 28, display: "flex", flexDirection: "column", gap: 28 }}
+    >
       {/* Honeypot: hidden from people, tempting to bots. */}
-      {!internal && (
+      {!staff && (
         <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", height: 0, overflow: "hidden" }}>
           <label>
             Website
@@ -121,25 +151,25 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
       <section>
         <h2 style={SECTION}>Address Information</h2>
         <div style={GRID}>
-          <Field label="Street Address" required={!internal}>
-            <input className="input" required={!internal} maxLength={200} autoComplete="address-line1" value={f.street} onChange={set("street")} />
+          <Field label="Street Address" required={!staff}>
+            <input className="input" required={!staff} maxLength={200} autoComplete="address-line1" value={f.street} onChange={set("street")} />
           </Field>
           <Field label="Address Line 2">
             <input className="input" maxLength={200} autoComplete="address-line2" value={f.street2} onChange={set("street2")} />
           </Field>
-          <Field label="City" required={!internal}>
-            <input className="input" required={!internal} maxLength={100} autoComplete="address-level2" value={f.city} onChange={set("city")} />
+          <Field label="City" required={!staff}>
+            <input className="input" required={!staff} maxLength={100} autoComplete="address-level2" value={f.city} onChange={set("city")} />
           </Field>
-          <Field label="State" required={!internal}>
-            <select className="select" required={!internal} value={f.state} onChange={set("state")}>
+          <Field label="State" required={!staff}>
+            <select className="select" required={!staff} value={f.state} onChange={set("state")}>
               <option value="">Select a state…</option>
               {US_STATES.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </Field>
-          <Field label="ZIP Code" required={!internal}>
-            <input className="input" required={!internal} inputMode="numeric" pattern="\d{5}(-\d{4})?" title="5-digit ZIP code" autoComplete="postal-code" value={f.zip} onChange={set("zip")} />
+          <Field label="ZIP Code" required={!staff}>
+            <input className="input" required={!staff} inputMode="numeric" pattern="\d{5}(-\d{4})?" title="5-digit ZIP code" autoComplete="postal-code" value={f.zip} onChange={set("zip")} />
           </Field>
         </div>
       </section>
@@ -147,11 +177,11 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
       <section>
         <h2 style={SECTION}>Communication Details</h2>
         <div style={GRID}>
-          <Field label={internal ? "Phone (phone or email required)" : "Phone"} required={!internal}>
-            <input className="input" required={!internal} type="tel" autoComplete="tel" value={f.phone} onChange={set("phone")} />
+          <Field label={internal ? "Phone (phone or email required)" : "Phone"} required={!staff}>
+            <input className="input" required={!staff} type="tel" autoComplete="tel" value={f.phone} onChange={set("phone")} />
           </Field>
-          <Field label={internal ? "Email (phone or email required)" : "Email"} required={!internal}>
-            <input className="input" required={!internal} type="email" autoComplete="email" value={f.email} onChange={set("email")} />
+          <Field label={internal ? "Email (phone or email required)" : "Email"} required={!staff}>
+            <input className="input" required={!staff} type="email" autoComplete="email" value={f.email} onChange={set("email")} />
           </Field>
         </div>
       </section>
@@ -183,8 +213,8 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
         </fieldset>
 
         <div style={{ maxWidth: 260 }}>
-          <Field label="Date Needed" required={!internal}>
-            <input className="input" required={!internal} type="date" value={f.dateNeeded} onChange={set("dateNeeded")} />
+          <Field label="Date Needed" required={!staff}>
+            <input className="input" required={!staff} type="date" value={f.dateNeeded} onChange={set("dateNeeded")} />
           </Field>
         </div>
       </section>
@@ -194,6 +224,13 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
         <textarea className="textarea" rows={5} maxLength={4000} value={f.additionalInfo} onChange={set("additionalInfo")} placeholder="Anything else we should know about your facility or scope?" />
       </section>
 
+      {customer && (
+        <section>
+          <h2 style={SECTION}>Payment received</h2>
+          <PaymentSection value={payment} onChange={(patch) => setPayment((s) => ({ ...s, ...patch }))} />
+        </section>
+      )}
+
       {error && (
         <div className="pill danger" role="alert" style={{ whiteSpace: "normal", width: "fit-content", maxWidth: "100%" }}>
           {error}
@@ -201,7 +238,7 @@ export function QuoteForm({ internal = false }: { internal?: boolean }) {
       )}
 
       <button type="submit" className="btn primary" disabled={pending} style={{ alignSelf: "flex-start" }}>
-        {pending ? (internal ? "Saving…" : "Submitting…") : internal ? "Add lead" : "Submit"}
+        {pending ? (staff ? "Saving…" : "Submitting…") : customer ? "Add customer" : internal ? "Add lead" : "Submit"}
       </button>
     </form>
   );

@@ -7,11 +7,11 @@ import { unwrap } from "@/lib/actions/result";
 import { PROGRESS_STATUSES, serviceTypesOf } from "@/lib/ops-options";
 import { SERVICE_GROUPS } from "@/lib/quote-options";
 import type { PaymentRecord } from "@/lib/repo-types";
-import { AuditorCombobox } from "@/components/ops/AuditorCombobox";
 import { InlineSelect } from "@/components/ops/Inline";
 import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
+import { PaymentHistoryDialog } from "@/components/ops/PaymentHistory";
 import { PaymentDialog, ReminderToast } from "@/components/ops/Payments";
-import { CallEmail, ContactCell, ServiceChips, fmtDate } from "@/components/ops/Parts";
+import { CallEmail, ContactCell, PaymentPill, ServiceChips, fmtDate } from "@/components/ops/Parts";
 import { CustomerDetails } from "./CustomerDetails";
 
 export interface CustomerOpsRow {
@@ -42,13 +42,14 @@ export interface CustomerOpsRow {
 
 // Header label + column width (% of the table).
 const COLS: [string, string][] = [
-  ["Name", "21%"],
-  ["Date query assigned", "12%"],
-  ["Service", "16%"],
-  ["Query assigned to", "17%"],
-  ["Service needed by", "12%"],
-  ["Status", "12%"],
-  ["", "10%"],
+  ["Name", "17%"],
+  ["Date query assigned", "10%"],
+  ["Service", "13%"],
+  ["Assigned to", "11%"],
+  ["Service needed by", "10%"],
+  ["Status", "11%"],
+  ["Payment status", "11%"],
+  ["", "17%"],
 ];
 
 // "First Last, Title" -> name + title
@@ -58,15 +59,7 @@ function splitContact(contact: string | null): { name: string; title: string | n
   return i === -1 ? { name: contact.trim(), title: null } : { name: contact.slice(0, i).trim(), title: contact.slice(i + 1).trim() || null };
 }
 
-export function CustomersTable({
-  customers,
-  auditors,
-  canAssign,
-}: {
-  customers: CustomerOpsRow[];
-  auditors: { id: string; name: string }[];
-  canAssign: boolean; // administrators assign auditors and complete queries
-}) {
+export function CustomersTable({ customers, isAdmin }: { customers: CustomerOpsRow[]; isAdmin: boolean }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
@@ -77,6 +70,7 @@ export function CustomersTable({
   const [now] = useState(() => Date.now());
   const [openId, setOpenId] = useState<string | null>(null);
   const [completeId, setCompleteId] = useState<string | null>(null);
+  const [payId, setPayId] = useState<string | null>(null);
   const [reminderFor, setReminderFor] = useState<string | null>(null);
 
   const auditorNames = useMemo(() => [...new Set(customers.map((c) => c.assignedAuditorName).filter((n): n is string => !!n))].sort(), [customers]);
@@ -97,6 +91,7 @@ export function CustomersTable({
   const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}|${payment}|${when}`);
   const open = customers.find((c) => c.id === openId) ?? null;
   const completing = customers.find((c) => c.id === completeId) ?? null;
+  const paying = customers.find((c) => c.id === payId) ?? null;
   const closeReminder = useCallback(() => setReminderFor(null), []);
 
   // "Completed" opens the payment check first; the other statuses are plain edits.
@@ -114,21 +109,19 @@ export function CustomersTable({
       name: <ContactCell compact name={name} title={title} company={c.name} email={c.email} phone={c.phone} />,
       assigned: c.assignedAuditorId ? fmtDate(c.assignedAt) : "—",
       service: <ServiceChips services={c.services} kind="type" />,
-      auditor: canAssign ? (
-        <AuditorCombobox value={c.assignedAuditorId} auditors={auditors} onSave={(id) => updateCustomerOps(c.id, { assignedAuditorId: id })} />
-      ) : (
-        <span style={{ fontWeight: 600 }}>{c.assignedAuditorName ?? "Unassigned"}</span>
-      ),
+      // Auditors are assigned on the Audits tab; this is just who has it.
+      auditor: c.assignedAuditorName ? <span style={{ fontWeight: 600 }}>{c.assignedAuditorName}</span> : <span style={{ color: "var(--ink-3)" }}>Not assigned yet</span>,
       needed: fmtDate(c.serviceDate),
       status: (
         <InlineSelect
           label="Status"
           value={c.progressStatus}
-          options={PROGRESS_STATUSES.filter((s) => s !== "Completed" || canAssign || c.progressStatus === "Completed")}
-          disabled={c.progressStatus === "Completed" && !canAssign}
+          options={PROGRESS_STATUSES.filter((s) => s !== "Completed" || isAdmin || c.progressStatus === "Completed")}
+          disabled={c.progressStatus === "Completed" && !isAdmin}
           onSave={(v) => saveStatus(c, v)}
         />
       ),
+      payment: <PaymentPill status={c.paymentStatus} onClick={() => setPayId(c.id)} />,
       actions: (
         <div className="dt-row-actions">
           <CallEmail compact email={c.email} phone={c.phone} />
@@ -214,6 +207,7 @@ export function CustomersTable({
                       <td>{c.auditor}</td>
                       <td>{c.needed}</td>
                       <td>{c.status}</td>
+                      <td>{c.payment}</td>
                       <td>{c.actions}</td>
                     </tr>
                   );
@@ -245,9 +239,13 @@ export function CustomersTable({
                       <div className="dt-field-label">Assigned to</div>
                       {c.auditor}
                     </div>
-                    <div className="dt-wide">
+                    <div>
                       <div className="dt-field-label">Status</div>
                       {c.status}
+                    </div>
+                    <div>
+                      <div className="dt-field-label">Payment</div>
+                      {c.payment}
                     </div>
                   </div>
                   <div className="dt-row-actions">
@@ -268,13 +266,29 @@ export function CustomersTable({
       {open && (
         <CustomerDetails
           customer={open}
-          auditors={auditors}
-          canAssign={canAssign}
+          isAdmin={isAdmin}
           onClose={() => setOpenId(null)}
+          onPayments={() => {
+            setOpenId(null);
+            setPayId(open.id);
+          }}
           onComplete={() => {
             setOpenId(null);
             setCompleteId(open.id);
           }}
+        />
+      )}
+
+      {paying && (
+        <PaymentHistoryDialog
+          customerId={paying.id}
+          name={paying.name}
+          total={paying.projectValue}
+          paid={paying.amountPaid}
+          status={paying.paymentStatus}
+          payments={paying.payments}
+          canRecord={isAdmin}
+          onClose={() => setPayId(null)}
         />
       )}
 

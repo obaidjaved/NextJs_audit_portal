@@ -87,11 +87,9 @@ export function CustomerSplitView({
   audits,
   actions,
   schedules,
-  auditors,
-  canAssign,
+  isAdmin,
 }: {
-  auditors: { id: string; name: string }[];
-  canAssign: boolean;
+  isAdmin: boolean;
   customers: CustomerRow[];
   audits: AuditRow[];
   actions: ActionSummary[];
@@ -151,8 +149,7 @@ export function CustomerSplitView({
         .sort((a, b) => b.date.localeCompare(a.date))[0];
     return (
       <CustomersTable
-        auditors={auditors}
-        canAssign={canAssign}
+        isAdmin={isAdmin}
         customers={customers.map((c) => ({
           id: c.id,
           name: c.name,

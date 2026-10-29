@@ -135,6 +135,7 @@ model Audit {
   criticalFail    Boolean  @default(false)
   draft           Boolean  @default(true)
   pendingApproval Boolean  @default(false)
+  needsCorrection Boolean  @default(false) // an admin sent a submitted audit back to the auditor
   date            DateTime @default(now())
   responses       Json     @default("[]")
   notes           String   @default("")

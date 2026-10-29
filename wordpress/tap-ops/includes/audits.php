@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const TAP_OPS_AUDIT_LIST_COLS = 'a.id, a.doc_number, a.template_id, a.customer_id, a.inspector_id, a.title, a.score, a.critical_fail, a.draft, a.pending_approval, a.audit_date, a.share_token, a.created_at, a.updated_at';
+const TAP_OPS_AUDIT_LIST_COLS = 'a.id, a.doc_number, a.template_id, a.customer_id, a.inspector_id, a.title, a.score, a.critical_fail, a.draft, a.pending_approval, a.needs_correction, a.audit_date, a.share_token, a.created_at, a.updated_at';
 
 /**
  * Turn audit rows into API objects.
@@ -62,6 +62,7 @@ function tap_ops_audits_out( array $rows, $mode = 'full' ) {
 			'criticalFail'    => (bool) (int) $r['critical_fail'],
 			'draft'           => (bool) (int) $r['draft'],
 			'pendingApproval' => (bool) (int) $r['pending_approval'],
+			'needsCorrection' => ! empty( $r['needs_correction'] ),
 			'date'            => tap_ops_iso( $r['audit_date'] ),
 		);
 		if ( array_key_exists( 'responses', $r ) ) {
@@ -122,6 +123,7 @@ function tap_ops_audit_input( array $b ) {
 		'criticalFail'    => 'critical_fail',
 		'draft'           => 'draft',
 		'pendingApproval' => 'pending_approval',
+		'needsCorrection' => 'needs_correction',
 	);
 	foreach ( $flags as $key => $col ) {
 		if ( array_key_exists( $key, $b ) ) {

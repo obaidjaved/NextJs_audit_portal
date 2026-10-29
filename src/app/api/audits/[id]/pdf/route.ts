@@ -14,8 +14,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const audit = await audits.get(id);
   if (!audit) return NextResponse.json({ error: "Audit not found" }, { status: 404 });
-  if (audit.draft || audit.pendingApproval) {
-    return NextResponse.json({ error: "The report is only available once the audit is completed and approved." }, { status: 409 });
+  if (audit.draft) {
+    return NextResponse.json({ error: "The report is only available once the audit has been submitted." }, { status: 409 });
   }
 
   const pdf = await buildAuditPdf(audit);

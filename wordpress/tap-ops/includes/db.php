@@ -70,6 +70,7 @@ function tap_ops_install_schema() {
   critical_fail tinyint(1) NOT NULL DEFAULT 0,
   draft tinyint(1) NOT NULL DEFAULT 0,
   pending_approval tinyint(1) NOT NULL DEFAULT 0,
+  needs_correction tinyint(1) NOT NULL DEFAULT 0,
   audit_date datetime NOT NULL,
   responses longtext,
   notes longtext,

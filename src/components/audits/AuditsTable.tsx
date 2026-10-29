@@ -2,118 +2,132 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, FileText } from "lucide-react";
-import type { AuditStatus } from "@/lib/scoring";
-import type { MergeValues } from "@/lib/email-merge";
+import { setAuditReview } from "@/lib/actions/audits";
+import { updateCustomerOps } from "@/lib/actions/ops";
+import type { ReviewStatus } from "@/lib/audit-review";
+import { matchesView, type AuditRow, type AuditView } from "@/lib/audit-rows";
 import { serviceTypesOf } from "@/lib/ops-options";
 import { SERVICE_GROUPS } from "@/lib/quote-options";
+import { AuditorCombobox } from "@/components/ops/AuditorCombobox";
+import { InlineSelect } from "@/components/ops/Inline";
 import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
-import { CallEmail, ServiceChips, fmtDate } from "@/components/ops/Parts";
-import { AuditRowMenu } from "./AuditRowMenu";
+import { fmtDate } from "@/components/ops/Parts";
 import { EmailDialog, type EmailTemplateRow } from "./EmailDialog";
 
-export interface AuditListRow {
-  id: string;
-  docNumber: string;
-  title: string;
-  customerName: string;
-  email: string | null;
-  phone: string | null;
-  services: string[];
-  serviceDate: string | null; // service needed by
-  auditorName: string | null;
-  date: string; // ISO — when the audit was done
-  status: AuditStatus;
-  completed: boolean; // finished and approved: has a report PDF
-  merge: MergeValues;
-}
+const VIEW_OPTIONS: { value: AuditView; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "unassigned", label: "Needs assigning" },
+  { value: "upcoming", label: "Coming up" },
+  { value: "completed", label: "Completed" },
+];
 
-const STATUS_PILL: Record<AuditStatus, string> = {
-  "In Progress": "pending",
-  "Pending Approval": "pending",
-  Flagged: "danger",
-  Cleared: "ok",
-  Marginal: "warn",
-};
-const STATUSES: AuditStatus[] = ["In Progress", "Pending Approval", "Flagged", "Marginal", "Cleared"];
+const REVIEW_PILL: Record<ReviewStatus, string> = { Approved: "ok", "Needs Correction": "danger", "Pending approval": "warn", "In progress": "pending" };
+const REVIEW_OPTIONS = ["Approved", "Needs Correction"];
+const STATUS_FILTER: string[] = ["All", "Approved", "Needs Correction", "Pending approval", "In progress", "No audit yet"];
 
 // Header label + column width (% of the table).
 const COLS: [string, string][] = [
-  ["Customer name", "18%"],
-  ["Service needed by", "11%"],
-  ["Service", "13%"],
-  ["Auditor", "11%"],
-  ["Status", "11%"],
-  ["Report PDF", "11%"],
-  ["", "25%"],
+  ["Name", "26%"],
+  ["Date of assignment", "11%"],
+  ["Date of service given", "11%"],
+  ["Name of auditor", "18%"],
+  ["Status", "16%"],
+  ["", "18%"],
 ];
 
 export function AuditsTable({
-  audits,
+  rows,
   templates,
-  canManageTemplates = false,
+  auditors,
+  isAdmin,
+  initialView = "all",
   initialQuery = "",
 }: {
-  audits: AuditListRow[];
+  rows: AuditRow[];
   templates: EmailTemplateRow[];
-  canManageTemplates?: boolean;
+  auditors: { id: string; name: string }[];
+  isAdmin: boolean;
+  initialView?: AuditView;
   initialQuery?: string;
 }) {
   const [search, setSearch] = useState(initialQuery);
+  const [view, setView] = useState<string>(initialView);
   const [status, setStatus] = useState("All");
   const [auditor, setAuditor] = useState("All");
   const [service, setService] = useState("All");
-  const [when, setWhen] = useState("all");
-  const [now] = useState(() => Date.now());
-  const [emailId, setEmailId] = useState<string | null>(null);
+  const [todayKey] = useState(() => new Date().toISOString().slice(0, 10));
+  const [emailKey, setEmailKey] = useState<string | null>(null);
 
-  const auditorNames = useMemo(() => [...new Set(audits.map((a) => a.auditorName).filter((n): n is string => !!n))].sort(), [audits]);
+  const auditorNames = useMemo(() => [...new Set(rows.map((r) => r.auditorName).filter((n): n is string => !!n))].sort(), [rows]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return audits.filter((a) => {
-      if (status !== "All" && a.status !== status) return false;
-      if (auditor !== "All" && a.auditorName !== auditor) return false;
-      if (service !== "All" && !serviceTypesOf(a.services).includes(service)) return false;
-      if (when !== "all" && new Date(a.date).getTime() < now - Number(when) * 86_400_000) return false;
+    return rows.filter((r) => {
+      if (!matchesView(r, view as AuditView, todayKey)) return false;
+      if (status !== "All" && (r.review ?? "No audit yet") !== status) return false;
+      if (auditor === "Not assigned" ? !!r.auditorId : auditor !== "All" && r.auditorName !== auditor) return false;
+      if (service !== "All" && !serviceTypesOf(r.services).includes(service)) return false;
       if (!q) return true;
-      return [a.customerName, a.title, a.docNumber, a.auditorName, ...a.services].join(" ").toLowerCase().includes(q);
+      return [r.company, r.client, r.code, r.address, r.auditorName, ...r.services].join(" ").toLowerCase().includes(q);
     });
-  }, [audits, search, status, auditor, service, when, now]);
+  }, [rows, search, view, status, auditor, service, todayKey]);
 
-  const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}|${when}`);
-  const emailing = audits.find((a) => a.id === emailId) ?? null;
+  const paged = usePaged(filtered, `${search}|${view}|${status}|${auditor}|${service}`);
+  const emailing = rows.find((r) => r.key === emailKey) ?? null;
+  const reportTemplate = templates.find((t) => t.attachReport && /report/i.test(t.name)) ?? templates.find((t) => t.attachReport);
 
-  function cells(a: AuditListRow) {
+  function cells(r: AuditRow) {
+    const nameInner = (
+      <>
+        <span className="dt-contact-name">{r.company}</span>
+        <span className="dt-contact-co">{r.client || "—"}</span>
+        <span className="dt-contact-line mono">{r.code ?? "No audit yet"}</span>
+        {r.address && <span className="dt-contact-line">{r.address}</span>}
+      </>
+    );
     return {
-      customer: (
-        <Link href={`/audits/${a.id}`} className="dt-contact" style={{ textDecoration: "none", color: "inherit" }}>
-          <span className="dt-contact-name">{a.customerName}</span>
-          <span className="dt-contact-co">{a.title}</span>
-          <span className="dt-contact-line mono">{a.docNumber}</span>
+      name: r.auditId ? (
+        <Link href={`/audits/${r.auditId}`} className="dt-contact" style={{ textDecoration: "none", color: "inherit" }}>
+          {nameInner}
         </Link>
-      ),
-      needed: fmtDate(a.serviceDate),
-      service: a.services.length ? <ServiceChips services={a.services} kind="type" /> : <span style={{ color: "var(--ink-3)" }}>—</span>,
-      auditor: a.auditorName ?? <span style={{ color: "var(--ink-3)" }}>—</span>,
-      status: <span className={`pill ${STATUS_PILL[a.status]}`}>{a.status}</span>,
-      report: a.completed ? (
-        <div className="dt-row-actions" style={{ flexWrap: "nowrap" }}>
-          <a className="dt-icon-btn" href={`/api/audits/${a.id}/pdf?inline=1`} target="_blank" rel="noreferrer" title="Preview the report PDF" aria-label={`Preview the report PDF for ${a.docNumber}`}>
-            <FileText size={16} />
-          </a>
-          <a className="dt-icon-btn" href={`/api/audits/${a.id}/pdf`} title="Download the report PDF" aria-label={`Download the report PDF for ${a.docNumber}`}>
-            <Download size={16} />
-          </a>
-        </div>
       ) : (
-        <span style={{ color: "var(--ink-3)", fontSize: 12 }}>—</span>
+        <div className="dt-contact">{nameInner}</div>
+      ),
+      assigned: fmtDate(r.assignedAt),
+      done: fmtDate(r.doneAt),
+      // Auditors are assigned here (not on the Customers tab); it applies to the customer's whole query.
+      auditor: isAdmin ? (
+        <AuditorCombobox value={r.auditorId} auditors={auditors} onSave={(id) => updateCustomerOps(r.customerId, { assignedAuditorId: id })} />
+      ) : (
+        <span style={{ fontWeight: 600 }}>{r.auditorName ?? "Not assigned yet"}</span>
+      ),
+      status: !r.review ? (
+        <span className="pill pending" style={{ textTransform: "none", letterSpacing: 0 }}>No audit yet</span>
+      ) : isAdmin ? (
+        <InlineSelect label="Review status" value={r.review} options={REVIEW_OPTIONS} onSave={(v) => setAuditReview(r.auditId as string, v as "Approved" | "Needs Correction")} />
+      ) : (
+        <span className={`pill ${REVIEW_PILL[r.review]}`} style={{ textTransform: "none", letterSpacing: 0 }}>{r.review}</span>
       ),
       actions: (
-        <div className="dt-row-actions" style={{ flexWrap: "nowrap" }}>
-          <CallEmail compact phone={a.phone} onEmail={() => setEmailId(a.id)} />
-          <Link href={`/audits/${a.id}`} className="btn ghost sm">Details</Link>
-          <AuditRowMenu auditId={a.id} />
+        <div className="dt-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
+          <button
+            type="button"
+            className="btn primary sm"
+            disabled={!r.approved}
+            title={r.approved ? "Email the report to the customer" : r.auditId ? "Approve the audit before sending its report" : "There is no audit yet"}
+            onClick={() => setEmailKey(r.key)}
+          >
+            Send Report
+          </button>
+          {r.submitted ? (
+            <a className="btn ghost sm" href={`/api/audits/${r.auditId}/pdf?inline=1`} target="_blank" rel="noreferrer">
+              View Report
+            </a>
+          ) : (
+            <span className="btn ghost sm" aria-disabled="true" style={{ opacity: 0.45, cursor: "not-allowed" }} title="No submitted report yet">
+              View Report
+            </span>
+          )}
         </div>
       ),
     };
@@ -124,35 +138,25 @@ export function AuditsTable({
       <FilterBar
         search={search}
         onSearch={setSearch}
-        placeholder="Search audits, customers, doc #…"
+        placeholder="Search by company, client, code, address…"
         onClear={() => {
           setSearch("");
+          setView("all");
           setStatus("All");
           setAuditor("All");
           setService("All");
-          setWhen("all");
         }}
         filters={[
-          { label: "Status", value: status, onChange: setStatus, options: ["All", ...STATUSES] },
-          { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", ...auditorNames] },
+          { label: "Show", value: view, onChange: setView, options: VIEW_OPTIONS },
+          { label: "Status", value: status, onChange: setStatus, options: STATUS_FILTER },
+          { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", "Not assigned", ...auditorNames] },
           { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
-          {
-            label: "Audit date",
-            value: when,
-            onChange: setWhen,
-            options: [
-              { value: "all", label: "Any time" },
-              { value: "7", label: "Last 7 days" },
-              { value: "30", label: "Last 30 days" },
-              { value: "90", label: "Last 90 days" },
-            ],
-          },
         ]}
       />
 
       {filtered.length === 0 ? (
         <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
-          {audits.length === 0 ? "No audits yet." : "No audits match these filters."}
+          {rows.length === 0 ? "No audits yet." : "Nothing matches these filters."}
         </div>
       ) : (
         <>
@@ -171,16 +175,15 @@ export function AuditsTable({
                 </tr>
               </thead>
               <tbody>
-                {paged.pageItems.map((a) => {
-                  const c = cells(a);
+                {paged.pageItems.map((r) => {
+                  const c = cells(r);
                   return (
-                    <tr key={a.id}>
-                      <td>{c.customer}</td>
-                      <td>{c.needed}</td>
-                      <td>{c.service}</td>
+                    <tr key={r.key}>
+                      <td>{c.name}</td>
+                      <td>{c.assigned}</td>
+                      <td>{c.done}</td>
                       <td>{c.auditor}</td>
                       <td>{c.status}</td>
-                      <td>{c.report}</td>
                       <td>{c.actions}</td>
                     </tr>
                   );
@@ -190,31 +193,27 @@ export function AuditsTable({
           </div>
 
           <div className="dt-cards">
-            {paged.pageItems.map((a) => {
-              const c = cells(a);
+            {paged.pageItems.map((r) => {
+              const c = cells(r);
               return (
-                <div key={a.id} className="card dt-card">
-                  {c.customer}
+                <div key={r.key} className="card dt-card">
+                  {c.name}
                   <div className="dt-card-grid">
+                    <div>
+                      <div className="dt-field-label">Assigned on</div>
+                      {c.assigned}
+                    </div>
+                    <div>
+                      <div className="dt-field-label">Service given</div>
+                      {c.done}
+                    </div>
                     <div className="dt-wide">
-                      <div className="dt-field-label">Service</div>
-                      {c.service}
-                    </div>
-                    <div>
-                      <div className="dt-field-label">Needed by</div>
-                      {c.needed}
-                    </div>
-                    <div>
                       <div className="dt-field-label">Auditor</div>
                       {c.auditor}
                     </div>
-                    <div>
+                    <div className="dt-wide">
                       <div className="dt-field-label">Status</div>
                       {c.status}
-                    </div>
-                    <div>
-                      <div className="dt-field-label">Report</div>
-                      {c.report}
                     </div>
                   </div>
                   {c.actions}
@@ -227,16 +226,17 @@ export function AuditsTable({
         </>
       )}
 
-      {emailing && (
+      {emailing && emailing.auditId && (
         <EmailDialog
-          auditId={emailing.id}
-          title={`${emailing.customerName} — ${emailing.docNumber}`}
+          auditId={emailing.auditId}
+          title={`${emailing.company}${emailing.code ? ` — ${emailing.code}` : ""}`}
           to={emailing.email ?? ""}
           values={emailing.merge}
-          completed={emailing.completed}
+          completed={emailing.approved}
           templates={templates}
-          canManage={canManageTemplates}
-          onClose={() => setEmailId(null)}
+          defaultTemplateId={reportTemplate?.id}
+          canManage={isAdmin}
+          onClose={() => setEmailKey(null)}
         />
       )}
     </div>

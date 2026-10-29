@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { customers as customersRepo, audits as auditsRepo, actions as actionsRepo, schedules as schedulesRepo, users as usersRepo } from "@/lib/repo";
+import { customers as customersRepo, audits as auditsRepo, actions as actionsRepo, schedules as schedulesRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 import { CustomerSplitView } from "@/components/customers/CustomerSplitView";
+import { NewCustomerButton } from "@/components/customers/NewCustomerButton";
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const { view } = await searchParams;
@@ -15,7 +15,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <div>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <h1 className="disp" style={{ fontSize: 22, fontWeight: 800 }}>Customers</h1>
-        <Link href="/customers/new" className="btn primary">+ New Customer</Link>
+        {user.role === "ADMIN" ? <NewCustomerButton /> : null}
       </div>
 
       <CustomersView isAdmin={user.role === "ADMIN"} />
@@ -24,20 +24,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 }
 
 async function CustomersView({ isAdmin }: { isAdmin: boolean }) {
-  const [customers, audits, actions, schedules, staff] = await Promise.all([
+  const [customers, audits, actions, schedules] = await Promise.all([
     customersRepo.list(),
     auditsRepo.list({ noResponses: true }),
     actionsRepo.list(),
     schedulesRepo.list(),
-    // Only administrators hand customers to auditors, so only they need the list.
-    isAdmin ? usersRepo.list() : Promise.resolve([]),
   ]);
 
   return (
     <Suspense>
       <CustomerSplitView
-        canAssign={isAdmin}
-        auditors={staff.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
+        isAdmin={isAdmin}
         customers={customers.map((c) => ({
           id: c.id,
           name: c.name,
