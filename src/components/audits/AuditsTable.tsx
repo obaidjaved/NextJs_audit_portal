@@ -106,6 +106,12 @@ export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: 
         search={search}
         onSearch={setSearch}
         placeholder="Search audits, customers, doc #…"
+        onClear={() => {
+          setSearch("");
+          setStatus("All");
+          setAuditor("All");
+          setService("All");
+        }}
         filters={[
           { label: "Status", value: status, onChange: setStatus, options: ["All", ...STATUSES] },
           { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", ...auditorNames] },

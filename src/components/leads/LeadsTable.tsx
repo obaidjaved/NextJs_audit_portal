@@ -58,6 +58,8 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
   const [service, setService] = useState("All");
+  const [when, setWhen] = useState("all");
+  const [now] = useState(() => Date.now());
   const [openId, setOpenId] = useState<string | null>(null);
   const [convertId, setConvertId] = useState<string | null>(null);
 
@@ -66,12 +68,13 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
     return leads.filter((l) => {
       if (status !== "All" && l.leadStatus !== status) return false;
       if (service !== "All" && !serviceTypesOf(l.services).includes(service)) return false;
+      if (when !== "all" && new Date(l.createdAt).getTime() < now - Number(when) * 86_400_000) return false;
       if (!q) return true;
       return [l.firstName, l.lastName, l.companyName, l.email, l.phone, l.city, l.state, ...l.services].join(" ").toLowerCase().includes(q);
     });
-  }, [leads, search, status, service]);
+  }, [leads, search, status, service, when, now]);
 
-  const paged = usePaged(filtered, `${search}|${status}|${service}`);
+  const paged = usePaged(filtered, `${search}|${status}|${service}|${when}`);
   const open = leads.find((l) => l.id === openId) ?? null;
   const converting = leads.find((l) => l.id === convertId) ?? null;
 
@@ -117,9 +120,26 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
         search={search}
         onSearch={setSearch}
         placeholder="Search leads by name, company, email…"
+        onClear={() => {
+          setSearch("");
+          setStatus("All");
+          setService("All");
+          setWhen("all");
+        }}
         filters={[
           { label: "Status", value: status, onChange: setStatus, options: ["All", ...LEAD_STATUSES] },
           { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+          {
+            label: "Date of lead",
+            value: when,
+            onChange: setWhen,
+            options: [
+              { value: "all", label: "Any time" },
+              { value: "7", label: "Last 7 days" },
+              { value: "30", label: "Last 30 days" },
+              { value: "90", label: "Last 90 days" },
+            ],
+          },
         ]}
       />
 

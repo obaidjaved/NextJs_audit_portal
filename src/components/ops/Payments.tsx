@@ -169,9 +169,14 @@ export function PaymentDialog(props: PaymentDialogProps) {
           const amountPaid = status === "Full Payment" ? totalAmount : Number(paid);
           if (!Number.isFinite(amountPaid) || amountPaid <= 0) return setError("Enter the amount paid.");
           if (status === "Partial" && amountPaid >= totalAmount) return setError("A partial payment must be less than the total. Choose “Fully paid” instead.");
+          if (!transactionId.trim()) return setError("Enter the transaction ID.");
+          if (proofs.length === 0) return setError("Attach a screenshot or invoice of the payment.");
           unwrap(await props.onSubmit({ totalAmount, status, amountPaid, method, date, transactionId, proofs }));
         } else {
-          unwrap(await props.onSubmit(needsPayment && (balance ?? 1) > 0 ? { method, date, transactionId, proofs } : undefined));
+          const paying = needsPayment && (balance ?? 1) > 0;
+          if (paying && !transactionId.trim()) return setError("Enter the transaction ID.");
+          if (paying && proofs.length === 0) return setError("Attach a screenshot or invoice of the payment.");
+          unwrap(await props.onSubmit(paying ? { method, date, transactionId, proofs } : undefined));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");

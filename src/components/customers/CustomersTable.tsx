@@ -141,6 +141,12 @@ export function CustomersTable({
         search={search}
         onSearch={setSearch}
         placeholder="Search customers by name, company, auditor…"
+        onClear={() => {
+          setSearch("");
+          setStatus("All");
+          setAuditor("All");
+          setService("All");
+        }}
         filters={[
           { label: "Status", value: status, onChange: setStatus, options: ["All", ...PROGRESS_STATUSES] },
           { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", "Unassigned", ...auditorNames] },

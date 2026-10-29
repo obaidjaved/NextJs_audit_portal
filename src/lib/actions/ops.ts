@@ -75,7 +75,7 @@ const convertSchema = paymentDetailsSchema.extend({
 export async function convertLead(id: string, input: unknown): Promise<ActionResult<{ customerId: string | null }>> {
   return attempt(async () => {
     await requireAdmin();
-    const data = parseOrThrow(convertSchema, input);
+    const data = parseOrThrow(convertSchema, input, { plain: true });
     // "Fully paid" means the whole deal was paid; "Partial" must be less than the total.
     const paid = data.status === "Full Payment" ? data.totalAmount : data.amountPaid;
     if (data.status === "Partial" && paid >= data.totalAmount) {
@@ -126,7 +126,7 @@ export async function completeCustomer(id: string, input?: unknown): Promise<Act
       // The final instalment is whatever is still owed.
       const balance = Math.round((total - customer.amountPaid) * 100) / 100;
       if (balance > 0) {
-        const details = parseOrThrow(paymentDetailsSchema, input);
+        const details = parseOrThrow(paymentDetailsSchema, input, { plain: true });
         const payments = [...customer.payments, makePayment(balance, details)];
         patch.payments = payments;
         patch.amountPaid = sumPayments(payments);

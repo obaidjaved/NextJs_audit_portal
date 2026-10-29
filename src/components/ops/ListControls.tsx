@@ -22,10 +22,12 @@ export function FilterBar({
   onSearch,
   placeholder,
   filters,
+  onClear,
   children,
 }: {
   search: string;
   onSearch: (v: string) => void;
+  onClear?: () => void;
   placeholder: string;
   filters: { label: string; value: string; onChange: (v: string) => void; options: (string | { value: string; label: string })[] }[];
   children?: ReactNode;
@@ -54,6 +56,11 @@ export function FilterBar({
           </select>
         </label>
       ))}
+      {onClear && (search.trim() !== "" || filters.some((f) => f.value !== (typeof f.options[0] === "string" ? f.options[0] : f.options[0].value))) && (
+        <button type="button" className="btn ghost sm" style={{ alignSelf: "flex-end", height: 42 }} onClick={onClear}>
+          Clear filters
+        </button>
+      )}
       {children}
     </div>
   );

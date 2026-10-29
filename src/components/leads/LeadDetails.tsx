@@ -58,9 +58,15 @@ export function LeadDetails({ lead: l, canReview, onClose, onConvert }: { lead: 
           <InlineSelect
             label="Lead status"
             value={l.leadStatus}
-            options={LEAD_STATUSES.filter((s) => s !== "Converted" || l.leadStatus === "Converted")}
+            options={LEAD_STATUSES.filter((s) => s !== "Converted" || canReview || l.leadStatus === "Converted")}
             disabled={locked}
-            onSave={(v) => updateLead(l.id, { leadStatus: v })}
+            onSave={async (v) => {
+              if (v === "Converted") {
+                onConvert();
+                return { ok: true as const };
+              }
+              return updateLead(l.id, { leadStatus: v });
+            }}
           />
         </DetailField>
 
