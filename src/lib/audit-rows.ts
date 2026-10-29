@@ -21,6 +21,7 @@ export interface AuditRow {
   services: string[];
   review: ReviewStatus | null; // null = no audit yet
   submitted: boolean; // a report exists to view
+  editable: boolean; // still a draft: in progress, or sent back for correction
   approved: boolean; // the report can be sent to the customer
   customerCompleted: boolean;
   email: string | null;
@@ -59,13 +60,14 @@ export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow
       code: a.docNumber,
       address: place(c ?? a.customer),
       assignedAt: c?.assignedAt?.toISOString() ?? null,
-      doneAt: a.draft ? null : a.date.toISOString(),
+      doneAt: a.draft && !a.needsCorrection ? null : a.date.toISOString(),
       neededBy: c?.serviceDate ?? null,
       auditorId: c?.assignedAuditorId ?? null,
       auditorName,
       services,
       review: reviewStatus(a),
-      submitted: !a.draft,
+      submitted: !a.draft || a.needsCorrection,
+      editable: a.draft,
       approved: isApproved(a),
       customerCompleted: c?.progressStatus === "Completed",
       email: c?.email ?? a.customer.email,
@@ -93,6 +95,7 @@ export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow
       services: c.services,
       review: null,
       submitted: false,
+      editable: false,
       approved: false,
       customerCompleted: false,
       email: c.email,

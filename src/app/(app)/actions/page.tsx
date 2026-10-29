@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { actions as actionsRepo, customers as customersRepo, users as usersRepo } from "@/lib/repo";
-import { requireUser } from "@/lib/access";
+import { requireAdminPage } from "@/lib/access";
 import { dateOnlyStringUTC } from "@/lib/schedule";
 import { ActionRow, type ActionRowData } from "@/components/actions/ActionRow";
 import { ActionForm } from "@/components/actions/ActionForm";
@@ -16,7 +16,7 @@ const PRIORITY_ORDER = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 } as const;
 
 export default async function ActionsPage({ searchParams }: { searchParams: Promise<{ tab?: string; customerId?: string }> }) {
   const { tab = "open", customerId } = await searchParams;
-  await requireUser();
+  await requireAdminPage();
 
   const rows = await actionsRepo.list({ customerId });
 

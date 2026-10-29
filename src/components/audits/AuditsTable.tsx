@@ -26,6 +26,14 @@ const REVIEW_OPTIONS = ["Approved", "Needs Correction"];
 const STATUS_FILTER: string[] = ["All", "Approved", "Needs Correction", "Pending approval", "In progress", "No audit yet"];
 
 // Header label + column width (% of the table).
+const AUDITOR_COLS: [string, string][] = [
+  ["Name", "34%"],
+  ["Date of assignment", "14%"],
+  ["Date of service given", "14%"],
+  ["Status", "16%"],
+  ["PDF report", "22%"],
+];
+
 const COLS: [string, string][] = [
   ["Name", "26%"],
   ["Date of assignment", "11%"],
@@ -57,6 +65,9 @@ export function AuditsTable({
   const [service, setService] = useState("All");
   const [todayKey] = useState(() => new Date().toISOString().slice(0, 10));
   const [emailKey, setEmailKey] = useState<string | null>(null);
+
+  const cols = isAdmin ? COLS : AUDITOR_COLS;
+  const viewOptions = isAdmin ? VIEW_OPTIONS : VIEW_OPTIONS.filter((o) => o.value !== "unassigned");
 
   const auditorNames = useMemo(() => [...new Set(rows.map((r) => r.auditorName).filter((n): n is string => !!n))].sort(), [rows]);
 
@@ -108,7 +119,30 @@ export function AuditsTable({
       ) : (
         <span className={`pill ${REVIEW_PILL[r.review]}`} style={{ textTransform: "none", letterSpacing: 0 }}>{r.review}</span>
       ),
-      actions: (
+      // Auditors: view the submitted PDF; edit only while the report is a draft (incl. sent back for corrections).
+      actions: !isAdmin ? (
+        <div className="dt-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
+          {r.submitted ? (
+            <a className="btn ghost sm" href={`/api/audits/${r.auditId}/pdf?inline=1`} target="_blank" rel="noreferrer">
+              View PDF
+            </a>
+          ) : (
+            <span className="btn ghost sm" aria-disabled="true" style={{ opacity: 0.45, cursor: "not-allowed" }} title="The PDF is available once the audit is submitted">
+              View PDF
+            </span>
+          )}
+          {r.auditId && r.editable && (
+            <Link className="btn primary sm" href={`/audits/${r.auditId}/edit`}>
+              {r.review === "Needs Correction" ? "Edit report" : "Continue"}
+            </Link>
+          )}
+          {!r.auditId && (
+            <Link className="btn primary sm" href={`/new-audit?customerId=${r.customerId}`}>
+              Start audit
+            </Link>
+          )}
+        </div>
+      ) : (
         <div className="dt-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
           <button
             type="button"
@@ -147,29 +181,33 @@ export function AuditsTable({
           setService("All");
         }}
         filters={[
-          { label: "Show", value: view, onChange: setView, options: VIEW_OPTIONS },
+          { label: "Show", value: view, onChange: setView, options: viewOptions },
           { label: "Status", value: status, onChange: setStatus, options: STATUS_FILTER },
-          { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", "Not assigned", ...auditorNames] },
-          { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+          ...(isAdmin
+            ? [
+                { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", "Not assigned", ...auditorNames] },
+                { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+              ]
+            : []),
         ]}
       />
 
       {filtered.length === 0 ? (
         <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
-          {rows.length === 0 ? "No audits yet." : "Nothing matches these filters."}
+          {rows.length === 0 ? (isAdmin ? "No audits yet." : "No audits have been assigned to you yet.") : "Nothing matches these filters."}
         </div>
       ) : (
         <>
           <div className="dt-wrap">
             <table className="dt">
               <colgroup>
-                {COLS.map(([, w], i) => (
+                {cols.map(([, w], i) => (
                   <col key={i} style={{ width: w }} />
                 ))}
               </colgroup>
               <thead>
                 <tr>
-                  {COLS.map(([h], i) => (
+                  {cols.map(([h], i) => (
                     <th key={i}>{h}</th>
                   ))}
                 </tr>
@@ -182,7 +220,7 @@ export function AuditsTable({
                       <td>{c.name}</td>
                       <td>{c.assigned}</td>
                       <td>{c.done}</td>
-                      <td>{c.auditor}</td>
+                      {isAdmin && <td>{c.auditor}</td>}
                       <td>{c.status}</td>
                       <td>{c.actions}</td>
                     </tr>
@@ -207,10 +245,12 @@ export function AuditsTable({
                       <div className="dt-field-label">Service given</div>
                       {c.done}
                     </div>
-                    <div className="dt-wide">
-                      <div className="dt-field-label">Auditor</div>
-                      {c.auditor}
-                    </div>
+                    {isAdmin && (
+                      <div className="dt-wide">
+                        <div className="dt-field-label">Auditor</div>
+                        {c.auditor}
+                      </div>
+                    )}
                     <div className="dt-wide">
                       <div className="dt-field-label">Status</div>
                       {c.status}

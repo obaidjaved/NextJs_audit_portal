@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { requests as requestsRepo } from "@/lib/repo";
-import { requireUser } from "@/lib/access";
+import { requireAdminPage } from "@/lib/access";
 import { LeadsTable, type LeadRow } from "@/components/leads/LeadsTable";
 
 export default async function LeadsPage() {
-  const user = await requireUser();
+  const user = await requireAdminPage();
   const rows = await requestsRepo.list();
 
   const leads: LeadRow[] = rows.map((r) => ({

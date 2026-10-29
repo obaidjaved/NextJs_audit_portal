@@ -19,7 +19,15 @@ export default async function AuditsPage({ searchParams }: { searchParams: Promi
     // Only administrators assign auditors, so only they need the list.
     isAdmin ? usersRepo.list() : Promise.resolve([]),
   ]);
-  const rows = buildAuditRows(audits, customers);
+  // Auditors see only the customers assigned to them and the audits on those (or that they started themselves).
+  const mine = customers.filter((c) => c.assignedAuditorId === user.id);
+  const mineIds = new Set(mine.map((c) => c.id));
+  const rows = isAdmin
+    ? buildAuditRows(audits, customers)
+    : buildAuditRows(
+        audits.filter((a) => a.inspectorId === user.id || mineIds.has(a.customerId)),
+        mine,
+      );
 
   return (
     <div>
@@ -27,7 +35,7 @@ export default async function AuditsPage({ searchParams }: { searchParams: Promi
         <h1 className="disp" style={{ fontSize: 22, fontWeight: 800 }}>Audits</h1>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isAdmin && <Link href="/email-templates" className="btn ghost sm">Email templates</Link>}
-          <a href="/api/export/audits" className="btn ghost sm">Export CSV</a>
+          {isAdmin && <a href="/api/export/audits" className="btn ghost sm">Export CSV</a>}
           <Link href="/new-audit" className="btn primary sm">+ New Audit</Link>
         </div>
       </div>

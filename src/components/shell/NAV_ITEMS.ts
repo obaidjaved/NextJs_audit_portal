@@ -14,12 +14,12 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Console", icon: "console", roles: STAFF },
   { href: "/new-audit", label: "New Audits", icon: "newAudit", roles: STAFF },
   { href: "/audits", label: "Audits", icon: "audits", roles: STAFF },
-  { href: "/actions", label: "Actions", icon: "actions", roles: STAFF },
+  { href: "/actions", label: "Actions", icon: "actions", roles: ["ADMIN"] },
   { href: "/templates", label: "Templates", icon: "templates", roles: STAFF },
   // Leads = everything from the public quote form, plus leads added by hand.
   // The badge counts leads still waiting for a decision.
-  { href: "/leads", label: "Leads", icon: "newCustomer", roles: STAFF, badge: "requests" },
-  { href: "/customers", label: "Customers", icon: "customers", roles: STAFF },
+  { href: "/leads", label: "Leads", icon: "newCustomer", roles: ["ADMIN"], badge: "requests" },
+  { href: "/customers", label: "Customers", icon: "customers", roles: ["ADMIN"] },
   { href: "/schedules", label: "Schedules", icon: "schedules", roles: STAFF },
   { href: "/analytics", label: "Analytics", icon: "analytics", roles: STAFF },
   { href: "/team", label: "Team", icon: "team", roles: ["ADMIN"] },

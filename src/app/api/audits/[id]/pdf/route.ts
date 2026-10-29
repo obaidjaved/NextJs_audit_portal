@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { audits } from "@/lib/repo";
 import { buildAuditPdf } from "@/lib/audit-pdf";
+import { canAccessAudit } from "@/lib/audit-access";
 
 export const maxDuration = 30;
 
@@ -14,7 +15,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const audit = await audits.get(id);
   if (!audit) return NextResponse.json({ error: "Audit not found" }, { status: 404 });
-  if (audit.draft) {
+  const role = session.user.role === "ADMIN" ? "ADMIN" : "INSPECTOR";
+  if (!(await canAccessAudit({ id: session.user.id, role }, audit))) return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+  // A report sent back for correction was submitted once, so its PDF stays viewable.
+  if (audit.draft && !audit.needsCorrection) {
     return NextResponse.json({ error: "The report is only available once the audit has been submitted." }, { status: 409 });
   }
 

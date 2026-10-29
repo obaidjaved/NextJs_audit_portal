@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { audits, templates, type Audit, RepoError } from "@/lib/repo";
+import { audits, templates, type Audit, RepoError, customers } from "@/lib/repo";
 import { auditInputSchema } from "@/lib/validation/audit";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/scoring";
 import { nextDocNumber } from "@/lib/doc-number";
 import { requireStaff, requireAdmin } from "@/lib/access";
+import { canAccessAudit, canEditAudit, LOCKED_MESSAGE } from "@/lib/audit-access";
 import { syncActionsFromAudit, logEvent } from "@/lib/corrective";
 import { attempt } from "./result";
 
@@ -22,6 +23,10 @@ export async function saveAudit(input: unknown) {
   return attempt(async () => {
     const user = await requireStaff();
     const data = parseOrThrow(auditInputSchema, input);
+    if (user.role !== "ADMIN") {
+      const customer = await customers.get(data.customerId);
+      if (customer?.assignedAuditorId !== user.id) throw new Error("This customer isn't assigned to you.");
+    }
 
     const template = await templates.get(data.templateId);
     if (!template) throw notFound("template");
@@ -77,6 +82,8 @@ export async function updateAudit(id: string, input: unknown) {
     const data = parseOrThrow(auditInputSchema, input);
     const existing = await audits.get(id);
     if (!existing) throw notFound("audit");
+    if (!(await canAccessAudit(user, existing))) throw notFound("audit");
+    if (!canEditAudit(user, existing)) throw new Error(LOCKED_MESSAGE);
 
     const responses = data.responses as ResponseObject[];
     const score = data.draft ? null : computeScore(responses);
@@ -116,6 +123,7 @@ export async function duplicateAudit(id: string) {
     const user = await requireStaff();
     const original = await audits.get(id);
     if (!original) throw notFound("audit");
+    if (!(await canAccessAudit(user, original))) throw notFound("audit");
 
     let copy: Audit | null = null;
     for (let attempt = 0; attempt < 4 && !copy; attempt++) {
@@ -189,6 +197,7 @@ export async function setAuditReview(id: string, status: "Approved" | "Needs Cor
     const audit = await audits.get(id);
     if (!audit) throw notFound("audit");
     if (status === "Approved") {
+      if (audit.needsCorrection) throw new Error("This audit is with the auditor for corrections. It can be approved once they submit it again.");
       if (audit.draft) throw new Error("This audit hasn't been submitted yet, so it can't be approved.");
       await audits.update(id, { pendingApproval: false, needsCorrection: false });
       await logEvent(id, undefined, "Approved for release");

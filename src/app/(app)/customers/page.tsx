@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { customers as customersRepo, audits as auditsRepo, actions as actionsRepo, schedules as schedulesRepo } from "@/lib/repo";
-import { requireUser } from "@/lib/access";
+import { requireAdminPage } from "@/lib/access";
 import { CustomerSplitView } from "@/components/customers/CustomerSplitView";
 import { NewCustomerButton } from "@/components/customers/NewCustomerButton";
 
@@ -9,7 +9,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const { view } = await searchParams;
   // Old bookmark: the "New requests" toggle moved to its own Leads tab.
   if (view === "requests") redirect("/leads");
-  const user = await requireUser();
+  const user = await requireAdminPage();
 
   return (
     <div>

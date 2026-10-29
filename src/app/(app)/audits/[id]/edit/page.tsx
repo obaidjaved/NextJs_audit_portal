@@ -1,15 +1,18 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { audits } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
+import { canAccessAudit, canEditAudit } from "@/lib/audit-access";
 import { AuditForm } from "@/components/audit-form/AuditForm";
 import type { TemplateField } from "@/lib/field-types";
 import type { ResponseObject } from "@/lib/scoring";
 
 export default async function EditAuditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireUser();
+  const user = await requireUser();
   const audit = await audits.get(id);
-  if (!audit) notFound();
+  if (!audit || !(await canAccessAudit(user, audit))) notFound();
+  // Submitted reports are read-only for auditors unless the administrator sent them back.
+  if (!canEditAudit(user, audit)) redirect(`/audits/${id}`);
 
   const fields = Array.isArray(audit.template.fields) ? (audit.template.fields as unknown as TemplateField[]) : [];
   const responseList = Array.isArray(audit.responses) ? (audit.responses as unknown as ResponseObject[]) : [];

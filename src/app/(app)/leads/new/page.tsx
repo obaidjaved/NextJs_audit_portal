@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/access";
+import { requireAdminPage } from "@/lib/access";
 import { LeadForm } from "@/components/leads/LeadForm";
 
 export default async function NewLeadPage() {
-  await requireStaff();
+  await requireAdminPage();
   return (
     <div style={{ maxWidth: 900 }}>
       <Link href="/leads" style={{ fontSize: 13, color: "var(--ink-2)" }}>← Back to leads</Link>

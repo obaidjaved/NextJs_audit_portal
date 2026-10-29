@@ -13,6 +13,7 @@ function csvCell(value: unknown): string {
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Only administrators can export." }, { status: 403 });
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q") ?? "";

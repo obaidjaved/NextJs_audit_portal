@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/access";
+import { canAccessAudit, canEditAudit } from "@/lib/audit-access";
 import { audits, actions, users } from "@/lib/repo";
 import { AuditReport } from "@/components/audits/AuditReport";
 import { AuditActionsBar } from "@/components/audits/AuditActionsBar";
@@ -15,7 +16,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
   const user = await requireUser();
 
   const audit = await audits.get(id);
-  if (!audit) notFound();
+  if (!audit || !(await canAccessAudit(user, audit))) notFound();
 
   const [auditActions, userRows, events] = await Promise.all([
     actions.list({ auditId: id }),
@@ -52,6 +53,8 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
             draft={audit.draft}
             pendingApproval={audit.pendingApproval}
             canApprove={user.role === "ADMIN"}
+            canEdit={canEditAudit(user, audit)}
+            needsCorrection={audit.needsCorrection}
           />
         }
       />

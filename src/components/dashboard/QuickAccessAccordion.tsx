@@ -16,10 +16,12 @@ export interface RecentCustomer {
 export function QuickAccessAccordion({
   recentTemplates,
   recentCustomers,
+  showCustomers = true,
   categories,
 }: {
   recentTemplates: RecentTemplate[];
   recentCustomers: RecentCustomer[];
+  showCustomers?: boolean;
   categories: { name: string; count: number }[];
 }) {
   const router = useRouter();
@@ -75,7 +77,7 @@ export function QuickAccessAccordion({
         </p>
       ),
     },
-  ];
+  ].filter((s) => showCustomers || s.title !== "Recent Customers");
 
   return (
     <div className="card panel">

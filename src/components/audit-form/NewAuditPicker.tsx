@@ -19,11 +19,13 @@ export interface PickerTemplate {
 export function NewAuditPicker({
   customers,
   templates,
+  isAdmin = true,
   initialCustomerId,
   initialTemplateId,
 }: {
   customers: PickerCustomer[];
   templates: PickerTemplate[];
+  isAdmin?: boolean;
   initialCustomerId?: string;
   initialTemplateId?: string;
 }) {
@@ -63,7 +65,7 @@ export function NewAuditPicker({
         <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
           {customers.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--ink-2)" }}>
-              No customers yet. <Link href="/customers/new">Add a customer</Link> first.
+              {isAdmin ? <>No customers yet. <Link href="/customers/new">Add a customer</Link> first.</> : "No customers have been assigned to you yet."}
             </p>
           ) : filteredCustomers.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--ink-2)" }}>No customers match &ldquo;{customerSearch}&rdquo;.</p>

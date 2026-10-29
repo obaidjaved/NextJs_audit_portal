@@ -11,11 +11,15 @@ export function AuditActionsBar({
   draft,
   pendingApproval,
   canApprove,
+  canEdit = true,
+  needsCorrection = false,
 }: {
   auditId: string;
   draft: boolean;
   pendingApproval: boolean;
   canApprove: boolean;
+  canEdit?: boolean;
+  needsCorrection?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -56,9 +60,11 @@ export function AuditActionsBar({
         >
           Print / Save as PDF
         </button>
-        <Link href={`/audits/${auditId}/edit`} className="btn ghost sm">
-          {draft ? "Continue" : "Edit"}
-        </Link>
+        {canEdit && (
+          <Link href={`/audits/${auditId}/edit`} className="btn ghost sm">
+            {needsCorrection ? "Edit report" : draft ? "Continue" : "Edit"}
+          </Link>
+        )}
         <button type="button" className="btn ghost sm" disabled={pending} onClick={duplicate}>
           Duplicate
         </button>

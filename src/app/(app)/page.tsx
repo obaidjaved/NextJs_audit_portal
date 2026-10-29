@@ -13,17 +13,22 @@ export default async function ConsolePage() {
   const firstName = userName.split(" ")[0];
 
   // One slow or failing list shouldn't take the whole Console down: show what loaded and "—" for the rest.
+  const isAdmin = user.role === "ADMIN";
   const [auditsR, templatesR, customersR, leadsR] = await Promise.allSettled([
     auditsRepo.list({ noResponses: true }),
     templatesRepo.list(),
     customersRepo.list(),
-    requestsRepo.list(),
+    isAdmin ? requestsRepo.list() : Promise.resolve([]),
   ]);
   const loaded = <T,>(r: PromiseSettledResult<T[]>): T[] | null => (r.status === "fulfilled" ? r.value : null);
-  const auditList = loaded(auditsR);
-  const customerList = loaded(customersR);
   const leadList = loaded(leadsR);
   const templateRows = loaded(templatesR) ?? [];
+  // Auditors only see what is assigned to them: their customers, and the audits on those (or that they started).
+  const allCustomers = loaded(customersR);
+  const customerList = allCustomers && !isAdmin ? allCustomers.filter((c) => c.assignedAuditorId === user.id) : allCustomers;
+  const mineIds = new Set((customerList ?? []).map((c) => c.id));
+  const allAudits = loaded(auditsR);
+  const auditList = allAudits && !isAdmin ? allAudits.filter((a) => a.inspectorId === user.id || mineIds.has(a.customerId)) : allAudits;
   const auditRows = auditList ?? [];
   const customerRows = customerList ?? [];
   const incomplete = !auditList || !customerList || !leadList || templatesR.status === "rejected";
@@ -52,13 +57,19 @@ export default async function ConsolePage() {
   const lines = buildAuditRows(auditRows, customerRows);
   const countView = (view: "completed" | "unassigned" | "upcoming") =>
     auditList && customerList ? lines.filter((r) => matchesView(r, view, todayKey)).length : null;
-  const cards = [
-    { label: "Leads", value: leadList ? leadList.length : null, href: "/leads" },
-    { label: "Customers", value: customerList ? customerList.length : null, href: "/customers" },
-    { label: "Audits completed", value: countView("completed"), href: "/audits?view=completed" },
-    { label: "Audits to be assigned", value: countView("unassigned"), href: "/audits?view=unassigned" },
-    { label: "Audits coming up", value: countView("upcoming"), href: "/audits?view=upcoming" },
-  ];
+  // Auditors have no Leads or Customers tabs, and nothing to assign, so they get just their own audit numbers.
+  const cards = isAdmin
+    ? [
+        { label: "Leads", value: leadList ? leadList.length : null, href: "/leads" },
+        { label: "Customers", value: customerList ? customerList.length : null, href: "/customers" },
+        { label: "Audits completed", value: countView("completed"), href: "/audits?view=completed" },
+        { label: "Audits to be assigned", value: countView("unassigned"), href: "/audits?view=unassigned" },
+        { label: "Audits coming up", value: countView("upcoming"), href: "/audits?view=upcoming" },
+      ]
+    : [
+        { label: "Audits completed", value: countView("completed"), href: "/audits?view=completed" },
+        { label: "Audits coming up", value: countView("upcoming"), href: "/audits?view=upcoming" },
+      ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -76,7 +87,7 @@ export default async function ConsolePage() {
       <ConsoleCards cards={cards} />
 
       <div className="lower-grid">
-        <QuickAccessAccordion recentTemplates={recentTemplates} recentCustomers={recentCustomers} categories={categories} />
+        <QuickAccessAccordion recentTemplates={recentTemplates} recentCustomers={recentCustomers} showCustomers={isAdmin} categories={categories} />
         <DashboardCalendar audits={audits} />
       </div>
     </div>

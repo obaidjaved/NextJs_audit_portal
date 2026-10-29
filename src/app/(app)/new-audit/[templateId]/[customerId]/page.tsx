@@ -15,6 +15,8 @@ export default async function NewAuditFormPage({
   const [template, customer] = await Promise.all([templates.get(templateId), customers.get(customerId)]);
 
   if (!template || !customer) notFound();
+  // Auditors can only audit the customers assigned to them.
+  if (user.role !== "ADMIN" && customer.assignedAuditorId !== user.id) notFound();
 
   const fields = Array.isArray(template.fields) ? (template.fields as unknown as TemplateField[]) : [];
 
