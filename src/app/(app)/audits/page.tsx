@@ -31,6 +31,7 @@ export default async function AuditsPage({ searchParams }: { searchParams: Promi
       services,
       serviceDate: c?.serviceDate ?? null,
       auditorName,
+      date: a.date.toISOString(),
       status: auditStatus(a),
       completed: !a.draft && !a.pendingApproval,
       merge: mergeValuesFor(a, { service: serviceTypesOf(services).join(", "), auditorName: auditorName ?? "" }),

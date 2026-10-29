@@ -521,7 +521,8 @@ const mail: Backend["mail"] = {
     if (!key || !from) {
       throw new RepoError(501, "mail_not_configured", "Email sending isn't set up on this site yet (RESEND_API_KEY and MAIL_FROM are missing).");
     }
-    const res = await fetch("https://api.resend.com/emails", {
+    // RESEND_API_URL only exists so tests can point this at a local stand-in.
+    const res = await fetch(process.env.RESEND_API_URL || "https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({

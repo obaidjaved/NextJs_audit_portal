@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import type { AuditStatus } from "@/lib/scoring";
 import type { MergeValues } from "@/lib/email-merge";
 import { serviceTypesOf } from "@/lib/ops-options";
@@ -22,6 +22,7 @@ export interface AuditListRow {
   services: string[];
   serviceDate: string | null; // service needed by
   auditorName: string | null;
+  date: string; // ISO — when the audit was done
   status: AuditStatus;
   completed: boolean; // finished and approved: has a report PDF
   merge: MergeValues;
@@ -38,13 +39,13 @@ const STATUSES: AuditStatus[] = ["In Progress", "Pending Approval", "Flagged", "
 
 // Header label + column width (% of the table).
 const COLS: [string, string][] = [
-  ["Customer name", "22%"],
-  ["Service needed by", "12%"],
-  ["Service", "17%"],
-  ["Auditor", "14%"],
+  ["Customer name", "18%"],
+  ["Service needed by", "11%"],
+  ["Service", "13%"],
+  ["Auditor", "11%"],
   ["Status", "11%"],
-  ["Report", "7%"],
-  ["", "17%"],
+  ["Report PDF", "11%"],
+  ["", "25%"],
 ];
 
 export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: AuditListRow[]; templates: EmailTemplateRow[]; initialQuery?: string }) {
@@ -52,6 +53,8 @@ export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: 
   const [status, setStatus] = useState("All");
   const [auditor, setAuditor] = useState("All");
   const [service, setService] = useState("All");
+  const [when, setWhen] = useState("all");
+  const [now] = useState(() => Date.now());
   const [emailId, setEmailId] = useState<string | null>(null);
 
   const auditorNames = useMemo(() => [...new Set(audits.map((a) => a.auditorName).filter((n): n is string => !!n))].sort(), [audits]);
@@ -62,12 +65,13 @@ export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: 
       if (status !== "All" && a.status !== status) return false;
       if (auditor !== "All" && a.auditorName !== auditor) return false;
       if (service !== "All" && !serviceTypesOf(a.services).includes(service)) return false;
+      if (when !== "all" && new Date(a.date).getTime() < now - Number(when) * 86_400_000) return false;
       if (!q) return true;
       return [a.customerName, a.title, a.docNumber, a.auditorName, ...a.services].join(" ").toLowerCase().includes(q);
     });
-  }, [audits, search, status, auditor, service]);
+  }, [audits, search, status, auditor, service, when, now]);
 
-  const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}`);
+  const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}|${when}`);
   const emailing = audits.find((a) => a.id === emailId) ?? null;
 
   function cells(a: AuditListRow) {
@@ -84,14 +88,19 @@ export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: 
       auditor: a.auditorName ?? <span style={{ color: "var(--ink-3)" }}>—</span>,
       status: <span className={`pill ${STATUS_PILL[a.status]}`}>{a.status}</span>,
       report: a.completed ? (
-        <a className="dt-icon-btn" href={`/api/audits/${a.id}/pdf?inline=1`} target="_blank" rel="noreferrer" title="Preview / download the report PDF" aria-label={`Open the report PDF for ${a.docNumber}`}>
-          <FileText size={16} />
-        </a>
+        <div className="dt-row-actions" style={{ flexWrap: "nowrap" }}>
+          <a className="dt-icon-btn" href={`/api/audits/${a.id}/pdf?inline=1`} target="_blank" rel="noreferrer" title="Preview the report PDF" aria-label={`Preview the report PDF for ${a.docNumber}`}>
+            <FileText size={16} />
+          </a>
+          <a className="dt-icon-btn" href={`/api/audits/${a.id}/pdf`} title="Download the report PDF" aria-label={`Download the report PDF for ${a.docNumber}`}>
+            <Download size={16} />
+          </a>
+        </div>
       ) : (
         <span style={{ color: "var(--ink-3)", fontSize: 12 }}>—</span>
       ),
       actions: (
-        <div className="dt-row-actions">
+        <div className="dt-row-actions" style={{ flexWrap: "nowrap" }}>
           <CallEmail compact phone={a.phone} onEmail={() => setEmailId(a.id)} />
           <Link href={`/audits/${a.id}`} className="btn ghost sm">Details</Link>
           <AuditRowMenu auditId={a.id} />
@@ -111,11 +120,23 @@ export function AuditsTable({ audits, templates, initialQuery = "" }: { audits: 
           setStatus("All");
           setAuditor("All");
           setService("All");
+          setWhen("all");
         }}
         filters={[
           { label: "Status", value: status, onChange: setStatus, options: ["All", ...STATUSES] },
           { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", ...auditorNames] },
           { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+          {
+            label: "Audit date",
+            value: when,
+            onChange: setWhen,
+            options: [
+              { value: "all", label: "Any time" },
+              { value: "7", label: "Last 7 days" },
+              { value: "30", label: "Last 30 days" },
+              { value: "90", label: "Last 90 days" },
+            ],
+          },
         ]}
       />
 
