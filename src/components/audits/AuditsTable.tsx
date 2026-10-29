@@ -21,6 +21,13 @@ const VIEW_OPTIONS: { value: AuditView; label: string }[] = [
   { value: "completed", label: "Completed" },
 ];
 
+const AUDITOR_VIEW_OPTIONS: { value: AuditView; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "due", label: "Due" },
+  { value: "today", label: "Due today" },
+  { value: "completed", label: "Completed" },
+];
+
 const REVIEW_PILL: Record<ReviewStatus, string> = { Approved: "ok", "Needs Correction": "danger", "Pending approval": "warn", "In progress": "pending" };
 const REVIEW_OPTIONS = ["Approved", "Needs Correction"];
 const STATUS_FILTER: string[] = ["All", "Approved", "Needs Correction", "Pending approval", "In progress", "No audit yet"];
@@ -67,7 +74,7 @@ export function AuditsTable({
   const [emailKey, setEmailKey] = useState<string | null>(null);
 
   const cols = isAdmin ? COLS : AUDITOR_COLS;
-  const viewOptions = isAdmin ? VIEW_OPTIONS : VIEW_OPTIONS.filter((o) => o.value !== "unassigned");
+  const viewOptions = isAdmin ? VIEW_OPTIONS : AUDITOR_VIEW_OPTIONS;
 
   const auditorNames = useMemo(() => [...new Set(rows.map((r) => r.auditorName).filter((n): n is string => !!n))].sort(), [rows]);
 

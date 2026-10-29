@@ -21,7 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/leads", label: "Leads", icon: "newCustomer", roles: ["ADMIN"], badge: "requests" },
   { href: "/customers", label: "Customers", icon: "customers", roles: ["ADMIN"] },
   { href: "/schedules", label: "Schedules", icon: "schedules", roles: STAFF },
-  { href: "/analytics", label: "Analytics", icon: "analytics", roles: STAFF },
+  { href: "/analytics", label: "Analytics", icon: "analytics", roles: ["ADMIN"] },
   { href: "/team", label: "Team", icon: "team", roles: ["ADMIN"] },
 ];
 

@@ -1,5 +1,5 @@
 import { audits as auditsRepo, actions as actionsRepo, customers as customersRepo } from "@/lib/repo";
-import { requireUser } from "@/lib/access";
+import { requireAdminPage } from "@/lib/access";
 import { computeAnalytics, type GroupStat } from "@/lib/analytics";
 import { dateOnlyStringUTC } from "@/lib/schedule";
 
@@ -7,7 +7,7 @@ const LABEL = { fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransf
 const scoreColor = (n: number) => (n >= 90 ? "var(--ok)" : n >= 70 ? "var(--warn)" : "var(--danger)");
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ customerId?: string }> }) {
-  await requireUser();
+  await requireAdminPage();
   const { customerId } = await searchParams;
 
   const [rows, customerRows, actionList] = await Promise.all([

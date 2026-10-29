@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { audits as auditsRepo, customers as customersRepo, emailTemplates as emailTemplatesRepo, users as usersRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
-import { AUDIT_VIEWS, buildAuditRows, type AuditView } from "@/lib/audit-rows";
+import { AUDIT_VIEWS, buildAuditRows, buildAuditorRows, type AuditView } from "@/lib/audit-rows";
 import { AuditsTable } from "@/components/audits/AuditsTable";
 
 // The email action runs here: building the PDF and handing it to the mail server can take a while.
@@ -19,15 +19,7 @@ export default async function AuditsPage({ searchParams }: { searchParams: Promi
     // Only administrators assign auditors, so only they need the list.
     isAdmin ? usersRepo.list() : Promise.resolve([]),
   ]);
-  // Auditors see only the customers assigned to them and the audits on those (or that they started themselves).
-  const mine = customers.filter((c) => c.assignedAuditorId === user.id);
-  const mineIds = new Set(mine.map((c) => c.id));
-  const rows = isAdmin
-    ? buildAuditRows(audits, customers)
-    : buildAuditRows(
-        audits.filter((a) => a.inspectorId === user.id || mineIds.has(a.customerId)),
-        mine,
-      );
+  const rows = isAdmin ? buildAuditRows(audits, customers) : buildAuditorRows(audits, customers, user.id);
 
   return (
     <div>

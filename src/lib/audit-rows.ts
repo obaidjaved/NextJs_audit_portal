@@ -28,20 +28,32 @@ export interface AuditRow {
   merge: MergeValues;
 }
 
-export type AuditView = "all" | "unassigned" | "upcoming" | "completed";
-export const AUDIT_VIEWS: AuditView[] = ["all", "unassigned", "upcoming", "completed"];
+export type AuditView = "all" | "unassigned" | "upcoming" | "completed" | "due" | "today";
+export const AUDIT_VIEWS: AuditView[] = ["all", "unassigned", "upcoming", "completed", "due", "today"];
 
 // todayKey = "YYYY-MM-DD".
 export function matchesView(r: AuditRow, view: AuditView, todayKey: string): boolean {
   if (view === "unassigned") return !r.auditorId && !r.customerCompleted;
   if (view === "upcoming") return !!r.auditorId && !r.customerCompleted && !!r.neededBy && r.neededBy >= todayKey;
   if (view === "completed") return r.approved;
+  if (view === "due") return !r.approved && !r.customerCompleted;
+  if (view === "today") return !r.approved && !r.customerCompleted && r.neededBy === todayKey;
   return true;
 }
 
 const place = (c?: { site: string | null; city: string | null; state: string | null }) =>
   [c?.site, [c?.city, c?.state].filter(Boolean).join(", ")].filter(Boolean).join(", ");
 const clientOf = (contact: string | null | undefined) => contact?.split(",")[0]?.trim() ?? "";
+
+// What one auditor sees: the customers assigned to them, and the audits on those (or that they started themselves).
+export function buildAuditorRows(audits: Audit[], customers: Customer[], userId: string): AuditRow[] {
+  const mine = customers.filter((c) => c.assignedAuditorId === userId);
+  const mineIds = new Set(mine.map((c) => c.id));
+  return buildAuditRows(
+    audits.filter((a) => a.inspectorId === userId || mineIds.has(a.customerId)),
+    mine,
+  );
+}
 
 export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow[] {
   const customerById = new Map(customers.map((c) => [c.id, c]));

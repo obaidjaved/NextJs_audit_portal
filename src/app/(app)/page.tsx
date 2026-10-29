@@ -55,9 +55,9 @@ export default async function ConsolePage() {
   // The five numbers. They count the same lines as the Audits tab, so each card matches the list it opens.
   const todayKey = dateOnlyStringUTC(new Date());
   const lines = buildAuditRows(auditRows, customerRows);
-  const countView = (view: "completed" | "unassigned" | "upcoming") =>
+  const countView = (view: "completed" | "unassigned" | "upcoming" | "due" | "today") =>
     auditList && customerList ? lines.filter((r) => matchesView(r, view, todayKey)).length : null;
-  // Auditors have no Leads or Customers tabs, and nothing to assign, so they get just their own audit numbers.
+  // Auditors have no Leads or Customers tabs, so they get just their own audit numbers.
   const cards = isAdmin
     ? [
         { label: "Leads", value: leadList ? leadList.length : null, href: "/leads" },
@@ -67,8 +67,10 @@ export default async function ConsolePage() {
         { label: "Audits coming up", value: countView("upcoming"), href: "/audits?view=upcoming" },
       ]
     : [
+        { label: "Audits assigned", value: auditList && customerList ? lines.length : null, href: "/audits" },
         { label: "Audits completed", value: countView("completed"), href: "/audits?view=completed" },
-        { label: "Audits coming up", value: countView("upcoming"), href: "/audits?view=upcoming" },
+        { label: "Audits due", value: countView("due"), href: "/audits?view=due" },
+        { label: "Audits due today", value: countView("today"), href: "/audits?view=today" },
       ];
 
   return (
