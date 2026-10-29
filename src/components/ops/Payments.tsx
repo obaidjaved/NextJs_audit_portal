@@ -135,8 +135,11 @@ export type PaymentDialogProps =
       total: number | null;
       paid: number;
       paymentStatus: string;
+      assigned: boolean; // an auditor is assigned to the query
+      hasReport: boolean; // a completed audit report exists for this customer
+      hasPayments: boolean; // at least one payment has been recorded here
       onClose: () => void;
-      onSubmit: (data: { method: string; date: string; transactionId: string; proofs: string[] } | undefined) => Promise<unknown>;
+      onSubmit: (data: { method?: string; date?: string; transactionId?: string; proofs?: string[]; totalAmount?: number; alreadyPaid?: boolean } | undefined) => Promise<unknown>;
     };
 
 export function PaymentDialog(props: PaymentDialogProps) {
@@ -151,12 +154,20 @@ export function PaymentDialog(props: PaymentDialogProps) {
   const [date, setDate] = useState(todayLocal());
   const [transactionId, setTransactionId] = useState("");
   const [proofs, setProofs] = useState<string[]>([]);
+  const [totalInput, setTotalInput] = useState("");
+  const [alreadyPaid, setAlreadyPaid] = useState(false);
 
   // Fully paid means the amount paid is the whole total.
   const paidShown = status === "Full Payment" ? total : paid;
 
+  // Complete mode: the deal total is on file, or the admin types it in (customers added by hand have none yet).
   const needsPayment = convert || props.paymentStatus !== "Full Payment";
-  const balance = !convert && props.total !== null ? Math.max(Math.round((props.total - props.paid) * 100) / 100, 0) : null;
+  const entered = Number(totalInput);
+  const totalKnown = !convert ? (props.total ?? (Number.isFinite(entered) && entered > 0 ? entered : null)) : null;
+  const balance = !convert && totalKnown !== null ? Math.max(Math.round((totalKnown - props.paid) * 100) / 100, 0) : null;
+  // Nothing was ever recorded for this customer: the admin may confirm it was all paid before payments were tracked.
+  const canSkipPayment = !convert && needsPayment && !props.hasPayments;
+  const paying = !convert && needsPayment && !alreadyPaid && (balance ?? 1) > 0;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -173,10 +184,21 @@ export function PaymentDialog(props: PaymentDialogProps) {
           if (proofs.length === 0) return setError("Attach a screenshot or invoice of the payment.");
           unwrap(await props.onSubmit({ totalAmount, status, amountPaid, method, date, transactionId, proofs }));
         } else {
-          const paying = needsPayment && (balance ?? 1) > 0;
+          if (!props.assigned) return setError("Assign an auditor to this query before completing it.");
+          if (needsPayment && totalKnown === null) return setError("Enter the total amount of the deal.");
           if (paying && !transactionId.trim()) return setError("Enter the transaction ID.");
           if (paying && proofs.length === 0) return setError("Attach a screenshot or invoice of the payment.");
-          unwrap(await props.onSubmit(paying ? { method, date, transactionId, proofs } : undefined));
+          unwrap(
+            await props.onSubmit(
+              needsPayment
+                ? {
+                    ...(paying ? { method, date, transactionId, proofs } : {}),
+                    ...(props.total === null && totalKnown !== null ? { totalAmount: totalKnown } : {}),
+                    ...(alreadyPaid ? { alreadyPaid: true } : {}),
+                  }
+                : undefined,
+            ),
+          );
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -246,11 +268,22 @@ export function PaymentDialog(props: PaymentDialogProps) {
             <>
               <div>
                 <Label>Auditor</Label>
-                <div style={{ fontWeight: 700 }}>{props.auditor ?? "Unassigned"}</div>
+                {props.assigned ? (
+                  <div style={{ fontWeight: 700 }}>{props.auditor}</div>
+                ) : (
+                  <div style={{ fontWeight: 700, color: "var(--danger)" }}>Not assigned — assign an auditor first</div>
+                )}
               </div>
               <div>
                 <Label>Total amount of deal</Label>
-                <div style={{ fontWeight: 700 }}>{props.total !== null ? money(props.total) : "Not set"}</div>
+                {props.total !== null ? (
+                  <div style={{ fontWeight: 700 }}>{money(props.total)}</div>
+                ) : (
+                  <div className="dt-money">
+                    <span aria-hidden="true">$</span>
+                    <input className="input" inputMode="decimal" required value={totalInput} onChange={(e) => setTotalInput(e.target.value)} placeholder="Enter the deal total" />
+                  </div>
+                )}
               </div>
               <div>
                 <Label>Payment status</Label>
@@ -265,21 +298,33 @@ export function PaymentDialog(props: PaymentDialogProps) {
                   <div className="dtl-wide" style={{ borderTop: "1px solid var(--rule)", paddingTop: 14 }}>
                     <strong style={{ fontSize: 14 }}>Final instalment</strong>
                     <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 2 }}>
-                      {balance !== null ? <>Balance due: <strong style={{ color: "var(--ink)" }}>{money(balance)}</strong></> : "Set the total amount of the deal first."}
+                      {balance !== null ? <>Balance due: <strong style={{ color: "var(--ink)" }}>{money(balance)}</strong></> : "Enter the total amount of the deal above."}
                     </div>
                   </div>
-                  {balance !== null && balance > 0 && paymentFields}
+                  {canSkipPayment && (
+                    <label className="dtl-wide" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
+                      <input type="checkbox" checked={alreadyPaid} onChange={(e) => setAlreadyPaid(e.target.checked)} style={{ width: 18, height: 18 }} />
+                      This was already paid in full earlier — nothing new to record
+                    </label>
+                  )}
+                  {paying && balance !== null && paymentFields}
                 </>
               )}
             </>
           )}
         </div>
 
+        {!convert && !props.hasReport && (
+          <p style={{ fontSize: 12.5, color: "var(--warn)", marginTop: 12 }}>
+            Note: there is no completed audit report for this customer yet. You can still mark the query completed.
+          </p>
+        )}
+
         {error && <p role="alert" style={{ color: "var(--danger)", fontSize: 13, marginTop: 12 }}>{error}</p>}
 
         <div className="dtl-foot" style={{ justifyContent: "flex-end" }}>
           <button type="button" className="btn ghost sm" onClick={props.onClose} disabled={pending}>Cancel</button>
-          <button type="submit" className="btn primary sm" disabled={pending || (!convert && needsPayment && balance === null)}>
+          <button type="submit" className="btn primary sm" disabled={pending || (!convert && !props.assigned)}>
             {pending ? "Saving…" : convert ? "Convert to customer" : "Mark completed"}
           </button>
         </div>

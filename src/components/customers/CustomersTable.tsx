@@ -72,6 +72,9 @@ export function CustomersTable({
   const [status, setStatus] = useState("All");
   const [auditor, setAuditor] = useState("All");
   const [service, setService] = useState("All");
+  const [payment, setPayment] = useState("All");
+  const [when, setWhen] = useState("all");
+  const [now] = useState(() => Date.now());
   const [openId, setOpenId] = useState<string | null>(null);
   const [completeId, setCompleteId] = useState<string | null>(null);
   const [reminderFor, setReminderFor] = useState<string | null>(null);
@@ -84,12 +87,14 @@ export function CustomersTable({
       if (status !== "All" && c.progressStatus !== status) return false;
       if (auditor === "Unassigned" ? !!c.assignedAuditorId : auditor !== "All" && c.assignedAuditorName !== auditor) return false;
       if (service !== "All" && !serviceTypesOf(c.services).includes(service)) return false;
+      if (payment !== "All" && c.paymentStatus !== payment) return false;
+      if (when !== "all" && (!c.assignedAt || new Date(c.assignedAt).getTime() < now - Number(when) * 86_400_000)) return false;
       if (!q) return true;
       return [c.name, c.contact, c.email, c.phone, c.assignedAuditorName, ...c.services].join(" ").toLowerCase().includes(q);
     });
-  }, [customers, search, status, auditor, service]);
+  }, [customers, search, status, auditor, service, payment, when, now]);
 
-  const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}`);
+  const paged = usePaged(filtered, `${search}|${status}|${auditor}|${service}|${payment}|${when}`);
   const open = customers.find((c) => c.id === openId) ?? null;
   const completing = customers.find((c) => c.id === completeId) ?? null;
   const closeReminder = useCallback(() => setReminderFor(null), []);
@@ -146,11 +151,35 @@ export function CustomersTable({
           setStatus("All");
           setAuditor("All");
           setService("All");
+          setPayment("All");
+          setWhen("all");
         }}
         filters={[
           { label: "Status", value: status, onChange: setStatus, options: ["All", ...PROGRESS_STATUSES] },
           { label: "Auditor", value: auditor, onChange: setAuditor, options: ["All", "Unassigned", ...auditorNames] },
           { label: "Service", value: service, onChange: setService, options: ["All", ...SERVICE_GROUPS.map((g) => g.group)] },
+          {
+            label: "Payment",
+            value: payment,
+            onChange: setPayment,
+            options: [
+              { value: "All", label: "All" },
+              { value: "Full Payment", label: "Fully paid" },
+              { value: "Partial", label: "Partial" },
+              { value: "None", label: "Not paid" },
+            ],
+          },
+          {
+            label: "Date assigned",
+            value: when,
+            onChange: setWhen,
+            options: [
+              { value: "all", label: "Any time" },
+              { value: "7", label: "Last 7 days" },
+              { value: "30", label: "Last 30 days" },
+              { value: "90", label: "Last 90 days" },
+            ],
+          },
         ]}
       />
 
@@ -257,6 +286,9 @@ export function CustomersTable({
           total={completing.projectValue}
           paid={completing.amountPaid}
           paymentStatus={completing.paymentStatus}
+          assigned={!!completing.assignedAuditorId}
+          hasReport={!!completing.finalReportId}
+          hasPayments={completing.payments.length > 0}
           onClose={() => setCompleteId(null)}
           onSubmit={async (details) => {
             const res = unwrap(await completeCustomer(completing.id, details));

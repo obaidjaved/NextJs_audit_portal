@@ -118,14 +118,25 @@ export async function completeCustomer(id: string, input?: unknown): Promise<Act
     await requireAdmin();
     const customer = await customers.get(id);
     if (!customer) throw new Error("This customer no longer exists.");
+    if (!customer.assignedAuditorId) throw new Error("Assign an auditor to this query before completing it.");
 
+    const extra = (input ?? {}) as { totalAmount?: unknown; alreadyPaid?: unknown };
     const patch: Partial<CustomerInput> = { progressStatus: "Completed" };
     if (customer.paymentStatus !== "Full Payment") {
-      const total = customer.projectValue;
-      if (total === null) throw new Error("Set the total amount of the deal before completing this query.");
+      // Customers added by hand (or converted before payments were tracked) may have no deal total yet.
+      let total = customer.projectValue;
+      if (total === null) {
+        const entered = Number(extra.totalAmount);
+        if (!Number.isFinite(entered) || entered <= 0) throw new Error("Enter the total amount of the deal.");
+        total = Math.round(entered * 100) / 100;
+        patch.projectValue = total;
+      }
       // The final instalment is whatever is still owed.
       const balance = Math.round((total - customer.amountPaid) * 100) / 100;
-      if (balance > 0) {
+      if (extra.alreadyPaid === true && customer.payments.length === 0) {
+        // Nothing was ever recorded here, and the admin confirms it was all paid earlier.
+        patch.amountPaid = total;
+      } else if (balance > 0) {
         const details = parseOrThrow(paymentDetailsSchema, input, { plain: true });
         const payments = [...customer.payments, makePayment(balance, details)];
         patch.payments = payments;
