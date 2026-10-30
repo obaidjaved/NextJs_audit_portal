@@ -94,7 +94,7 @@ export function CustomerDetails({
       <div className="dtl-foot">
         <CallEmail email={c.email} phone={c.phone} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
-          <Link href={`/customers/${c.id}/edit`} className="btn ghost sm">Edit customer</Link>
+          <Link href={`/customers/${c.id}/edit?returnTo=${encodeURIComponent("/customers")}`} className="btn ghost sm">Edit customer</Link>
           <Link href={`/customers?customerId=${c.id}`} className="btn primary sm">Audits &amp; history</Link>
         </div>
       </div>

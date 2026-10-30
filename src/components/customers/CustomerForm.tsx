@@ -2,14 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { unwrap } from "@/lib/actions/result";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createCustomer, updateCustomer } from "@/lib/actions/customers";
 
 export function CustomerForm({
   customerId,
+  returnTo = "/customers",
   initial,
 }: {
   customerId?: string;
+  returnTo?: string; // where to go after saving or cancelling: back to where the editing started
   initial?: { name: string; site: string; city: string; state: string; zip: string; contact: string; email: string; phone: string };
 }) {
   const router = useRouter();
@@ -30,8 +33,9 @@ export function CustomerForm({
     setError(null);
     startTransition(async () => {
       try {
-        const result = unwrap(customerId ? await updateCustomer(customerId, state) : await createCustomer(state));
-        router.push(`/customers?customerId=${result.id}`);
+        unwrap(customerId ? await updateCustomer(customerId, state) : await createCustomer(state));
+        router.push(returnTo);
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to save customer.");
       }
@@ -77,9 +81,14 @@ export function CustomerForm({
 
       {error && <div className="pill danger" style={{ width: "fit-content" }}>{error}</div>}
 
-      <button type="button" className="btn primary" disabled={pending || !state.name} onClick={save}>
-        {pending ? "Saving…" : customerId ? "Save Changes" : "Create Customer"}
-      </button>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" className="btn primary" disabled={pending || !state.name} onClick={save}>
+          {pending ? "Saving…" : customerId ? "Save Changes" : "Create Customer"}
+        </button>
+        <Link href={returnTo} className="btn ghost">
+          Cancel
+        </Link>
+      </div>
     </div>
   );
 }

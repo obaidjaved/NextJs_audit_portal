@@ -251,7 +251,7 @@ export function CustomerSplitView({
                 {selected.phone && <a href={`tel:${selected.phone}`} style={{ textDecoration: "underline" }}>{selected.phone}</a>}
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                <Link href={`/customers/${selected.id}/edit`} className="btn ghost sm">Edit Customer</Link>
+                <Link href={`/customers/${selected.id}/edit?returnTo=${encodeURIComponent(`/customers?customerId=${selected.id}`)}`} className="btn ghost sm">Edit Customer</Link>
                 <Link href={`/new-audit?customerId=${selected.id}`} className="btn primary sm">+ New Audit</Link>
               </div>
             </div>

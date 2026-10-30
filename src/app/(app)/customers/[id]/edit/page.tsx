@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import { customers } from "@/lib/repo";
 import { CustomerForm } from "@/components/customers/CustomerForm";
 
-export default async function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditCustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
+  // Back to where the edit started (the Customers list, or one customer's page), never to an outside address.
+  const back = returnTo && returnTo.startsWith("/customers") && !returnTo.startsWith("//") ? returnTo : "/customers";
   const customer = await customers.get(id);
   if (!customer) notFound();
 
@@ -17,6 +20,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
       <CustomerForm
         key={customer.id}
         customerId={customer.id}
+        returnTo={back}
         initial={{
           name: customer.name,
           site: customer.site ?? "",
