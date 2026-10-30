@@ -163,7 +163,73 @@ function tap_ops_create_request( array $data, $strict, $default_source = 'api' )
 	if ( false === $wpdb->insert( tap_ops_t( 'requests' ), $row ) ) {
 		return tap_ops_err( 500, 'db_error', 'Could not save request.' );
 	}
-	return tap_ops_request_out( tap_ops_get_request_row( $wpdb->insert_id ) );
+	$out = tap_ops_request_out( tap_ops_get_request_row( $wpdb->insert_id ) );
+	if ( 'manual' !== $row['source'] ) {
+		tap_ops_notify_new_request( $out );
+	}
+	return $out;
+}
+
+/**
+ * Who hears about a new quote request: the addresses in TAP_OPS_NOTIFY_EMAILS (comma separated) if set,
+ * otherwise every TAP admin, otherwise the site's administrators. Filter: tap_ops_new_request_recipients.
+ */
+function tap_ops_new_request_recipients() {
+	$emails = array();
+	if ( defined( 'TAP_OPS_NOTIFY_EMAILS' ) && TAP_OPS_NOTIFY_EMAILS ) {
+		$emails = array_map( 'trim', explode( ',', (string) TAP_OPS_NOTIFY_EMAILS ) );
+	} else {
+		$users = get_users( array( 'role' => 'tap_admin' ) );
+		if ( ! $users ) {
+			$users = get_users( array( 'role' => 'administrator' ) );
+		}
+		foreach ( $users as $u ) {
+			$emails[] = $u->user_email;
+		}
+	}
+	$emails = array_values( array_unique( array_filter( $emails, 'is_email' ) ) );
+	return (array) apply_filters( 'tap_ops_new_request_recipients', $emails );
+}
+
+/**
+ * Emails the admins about a new quote request. Runs after the response has gone back to the visitor,
+ * so a slow mail server can never hold up (or break) the quote form.
+ */
+function tap_ops_notify_new_request( array $r ) {
+	add_action(
+		'shutdown',
+		function () use ( $r ) {
+			if ( function_exists( 'fastcgi_finish_request' ) ) {
+				fastcgi_finish_request();
+			}
+			$to = tap_ops_new_request_recipients();
+			if ( ! $to ) {
+				return;
+			}
+			$name   = trim( $r['firstName'] . ' ' . $r['lastName'] );
+			$who    = '' !== $r['companyName'] ? $r['companyName'] : $name;
+			$wanted = implode( ', ', array_merge( (array) $r['services'], (array) $r['trainings'] ) );
+			$lines  = array_filter(
+				array(
+					'Name: ' . $name,
+					'' !== $r['companyName'] ? 'Company: ' . $r['companyName'] : '',
+					'' !== $r['email'] ? 'Email: ' . $r['email'] : '',
+					'' !== $r['phone'] ? 'Phone: ' . $r['phone'] : '',
+					'' !== $wanted ? 'Wants: ' . $wanted : '',
+					! empty( $r['dateNeeded'] ) ? 'Needed by: ' . $r['dateNeeded'] : '',
+				)
+			);
+			$body   = "A new quote request just came in.\n\n" . implode( "\n", $lines );
+			if ( '' !== (string) $r['additionalInfo'] ) {
+				$body .= "\n\nNotes: " . ( function_exists( 'mb_substr' ) ? mb_substr( (string) $r['additionalInfo'], 0, 500 ) : substr( (string) $r['additionalInfo'], 0, 500 ) );
+			}
+			$portal = defined( 'TAP_OPS_PORTAL_URL' ) ? trim( (string) TAP_OPS_PORTAL_URL ) : '';
+			if ( '' !== $portal ) {
+				$body .= "\n\nReview it in the portal: " . untrailingslashit( $portal ) . '/leads';
+			}
+			wp_mail( $to, 'New quote request: ' . $who, $body, array( 'Content-Type: text/plain; charset=UTF-8' ) );
+		}
+	);
 }
 
 function tap_ops_h_request_create( WP_REST_Request $request ) {

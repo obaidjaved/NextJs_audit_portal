@@ -13,6 +13,8 @@ Gravity Forms quote-form intake. The contract is in [`API.md`](API.md). Requires
 ```php
 define( 'TAP_API_KEY', 'a-long-random-secret' );   // required; every endpoint returns 503 without it
 define( 'TAP_QUOTE_FORM_ID', 3 );                  // optional: Gravity Forms quote form id
+define( 'TAP_OPS_NOTIFY_EMAILS', 'a@x.com,b@x.com' ); // optional: who is emailed about new quote requests (default: TAP admins)
+define( 'TAP_OPS_PORTAL_URL', 'https://auditportal.tapsvs.com' ); // optional: adds a link to the Leads page in that email
 define( 'TAP_ALLOW_DEV_SEED', true );              // optional, DEV ONLY: enables POST /dev/seed
 ```
 

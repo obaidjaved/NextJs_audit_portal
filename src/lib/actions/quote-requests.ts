@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/access";
 import { requests, RepoError } from "@/lib/repo";
 import { leadSchema, quoteRequestSchema } from "@/lib/validation/quote-request";
 import { parseOrThrow } from "@/lib/validation/parse";
+import { emailAdminsNewLead } from "@/lib/notify";
 import { attempt, type ActionResult } from "./result";
 
 // Best-effort, per-instance throttle for the public form (5 submissions / hour / IP).
@@ -39,6 +40,7 @@ export async function submitQuoteRequest(input: unknown): Promise<ActionResult> 
 
     const data = parseOrThrow(quoteRequestSchema, raw);
     await requests.create(data);
+    await emailAdminsNewLead(data);
     revalidatePath("/leads");
   });
 }
