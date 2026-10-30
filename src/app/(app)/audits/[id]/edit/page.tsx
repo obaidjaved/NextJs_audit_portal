@@ -16,7 +16,7 @@ export default async function EditAuditPage({ params }: { params: Promise<{ id: 
   if (!canEditAudit(user, audit)) redirect(`/audits/${id}`);
 
   // If the administrator sent this report back, show their instructions above the form.
-  const correction = audit.needsCorrection ? latestCorrectionNote(await audits.events(id)) : null;
+  const correction = audit.needsCorrection ? audit.correctionNote || latestCorrectionNote(await audits.events(id)) : null;
 
   const fields = Array.isArray(audit.template.fields) ? (audit.template.fields as unknown as TemplateField[]) : [];
   const responseList = Array.isArray(audit.responses) ? (audit.responses as unknown as ResponseObject[]) : [];

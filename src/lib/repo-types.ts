@@ -100,6 +100,8 @@ export interface Audit {
   draft: boolean;
   pendingApproval: boolean;
   needsCorrection: boolean;
+  readyToSubmit: boolean;
+  correctionNote: string;
   date: Date;
   responses: unknown;
   notes: string;
@@ -123,6 +125,8 @@ export interface AuditWriteInput {
   draft: boolean;
   pendingApproval: boolean;
   needsCorrection?: boolean;
+  readyToSubmit?: boolean;
+  correctionNote?: string;
   date?: string;
   responses: unknown;
   notes: string;

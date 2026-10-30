@@ -5,6 +5,8 @@ import { FindingsList } from "./FindingsList";
 export const STATUS_PILL_CLASS: Record<string, string> = {
   "In Progress": "pending",
   "Pending Approval": "pending",
+  "Ready to submit": "pending",
+  "Needs Correction": "danger",
   Flagged: "danger",
   Cleared: "ok",
   Marginal: "warn",
@@ -19,6 +21,8 @@ export interface ReportAudit {
   score: number | null;
   draft: boolean;
   pendingApproval: boolean;
+  readyToSubmit?: boolean;
+  needsCorrection?: boolean;
   criticalFail: boolean;
   notes: string;
   responses: unknown;
@@ -29,7 +33,8 @@ export interface ReportAudit {
 }
 
 export function AuditReport({ audit, headerSlot }: { audit: ReportAudit; headerSlot?: ReactNode }) {
-  const status = auditStatus(audit);
+  // The review stages that come before and around the score-based statuses.
+  const status = audit.needsCorrection && audit.draft ? "Needs Correction" : audit.readyToSubmit ? "Ready to submit" : auditStatus(audit);
   const responses = Array.isArray(audit.responses) ? (audit.responses as ResponseObject[]) : [];
   const photos = Array.isArray(audit.photos) ? (audit.photos as { id: string; src: string }[]) : [];
 

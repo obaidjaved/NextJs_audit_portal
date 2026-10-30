@@ -268,6 +268,8 @@ const audits: Backend["audits"] = {
           draft: data.draft,
           pendingApproval: data.pendingApproval,
           needsCorrection: data.needsCorrection ?? false,
+          readyToSubmit: data.readyToSubmit ?? false,
+          correctionNote: data.correctionNote ?? "",
           responses: data.responses as Prisma.InputJsonValue,
           notes: data.notes,
           photos: data.photos as Prisma.InputJsonValue,
@@ -294,6 +296,8 @@ const audits: Backend["audits"] = {
         criticalFail: data.criticalFail,
         pendingApproval: data.pendingApproval,
         needsCorrection: data.needsCorrection,
+        readyToSubmit: data.readyToSubmit,
+        correctionNote: data.correctionNote,
       },
       include: auditInclude,
     });

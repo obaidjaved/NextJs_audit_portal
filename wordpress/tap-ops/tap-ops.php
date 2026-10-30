@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TAP Ops
  * Description: Headless back end (REST API, custom tables, roles, Gravity Forms intake) for the TAP Ops console.
- * Version:     1.5.0
+ * Version:     1.6.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Author:      TAP
@@ -14,8 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TAP_OPS_VERSION', '1.5.0' );
-define( 'TAP_OPS_DB_VERSION', '5' );
+define( 'TAP_OPS_VERSION', '1.6.0' );
+define( 'TAP_OPS_DB_VERSION', '6' );
 define( 'TAP_OPS_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once TAP_OPS_DIR . 'includes/helpers.php';

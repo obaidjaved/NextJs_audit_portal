@@ -1,6 +1,7 @@
 import { audits as auditsRepo, templates as templatesRepo, customers as customersRepo, requests as requestsRepo } from "@/lib/repo";
 import type { DashboardAudit } from "@/lib/dashboard";
 import { buildAuditRows, matchesView } from "@/lib/audit-rows";
+import Link from "next/link";
 import { ConsoleCards } from "@/components/dashboard/ConsoleCards";
 import { QuickAccessAccordion } from "@/components/dashboard/QuickAccessAccordion";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
@@ -57,6 +58,10 @@ export default async function ConsolePage() {
   const lines = buildAuditRows(auditRows, customerRows);
   const countView = (view: "completed" | "unassigned" | "upcoming" | "due" | "today") =>
     auditList && customerList ? lines.filter((r) => matchesView(r, view, todayKey)).length : null;
+  // What an auditor needs to act on: reports the admin sent back, and completed audits waiting to be submitted.
+  const sentBack = isAdmin ? 0 : lines.filter((r) => r.review === "Needs Correction").length;
+  const toSubmit = isAdmin ? 0 : lines.filter((r) => r.review === "Ready to submit").length;
+
   // Auditors have no Leads or Customers tabs, so they get just their own audit numbers.
   const cards = isAdmin
     ? [
@@ -84,6 +89,17 @@ export default async function ConsolePage() {
         <p role="status" style={{ color: "var(--ink-2)", fontSize: 13 }}>
           Some figures couldn&apos;t be loaded just now (the server was slow to answer). Reload the page to try again.
         </p>
+      )}
+
+      {sentBack > 0 && (
+        <Link href="/audits?view=due" role="alert" className="card-soft" style={{ padding: 14, borderLeft: "3px solid var(--danger)", textDecoration: "none", color: "inherit", fontSize: 13.5 }}>
+          <strong>{sentBack === 1 ? "1 report was" : `${sentBack} reports were`} sent back for corrections.</strong> Open Audits to see the admin&apos;s instructions.
+        </Link>
+      )}
+      {toSubmit > 0 && (
+        <Link href="/audits?view=due" className="card-soft" style={{ padding: 14, textDecoration: "none", color: "inherit", fontSize: 13.5 }}>
+          <strong>{toSubmit === 1 ? "1 completed audit is" : `${toSubmit} completed audits are`} ready to submit</strong> to the admin.
+        </Link>
       )}
 
       <ConsoleCards cards={cards} />

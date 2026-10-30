@@ -19,10 +19,12 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
   const audit = await audits.get(id);
   if (!audit || !(await canAccessAudit(user, audit))) notFound();
 
+  // Auditors only get the report and its two buttons; corrective actions, sharing and activity are the admin's.
+  const isAdmin = user.role === "ADMIN";
   const [auditActions, userRows, events] = await Promise.all([
-    actions.list({ auditId: id }),
-    users.list(),
-    audits.events(id),
+    isAdmin ? actions.list({ auditId: id }) : Promise.resolve([]),
+    isAdmin ? users.list() : Promise.resolve([]),
+    isAdmin || (audit.needsCorrection && !audit.correctionNote) ? audits.events(id) : Promise.resolve([]),
   ]);
   const assignees = userRows.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }));
 
@@ -49,7 +51,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
       {audit.needsCorrection && (
         <div role="status" className="card-soft no-print" style={{ padding: 14, maxWidth: 760, marginBottom: 12, borderLeft: "3px solid var(--danger)" }}>
           <div style={{ ...SECTION_LABEL, color: "var(--danger)", marginBottom: 4 }}>Corrections requested</div>
-          <p style={{ margin: 0, fontSize: 13.5, whiteSpace: "pre-wrap" }}>{latestCorrectionNote(events) ?? "The administrator sent this report back for corrections."}</p>
+          <p style={{ margin: 0, fontSize: 13.5, whiteSpace: "pre-wrap" }}>{audit.correctionNote || latestCorrectionNote(events) || "The administrator sent this report back for corrections."}</p>
         </div>
       )}
       <AuditReport
@@ -58,15 +60,19 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
           <AuditActionsBar
             auditId={audit.id}
             draft={audit.draft}
-            pendingApproval={audit.pendingApproval}
+            pendingApproval={audit.pendingApproval && !audit.readyToSubmit}
             canApprove={user.role === "ADMIN"}
             title={`${audit.customer.name} — ${audit.docNumber}`}
+            isAdmin={user.role === "ADMIN"}
+            readyToSubmit={audit.readyToSubmit}
             canEdit={canEditAudit(user, audit)}
             needsCorrection={audit.needsCorrection}
           />
         }
       />
 
+      {isAdmin && (
+      <>
       <div className="card" style={{ maxWidth: 760, marginTop: 16, overflow: "hidden" }}>
         <div style={{ ...SECTION_LABEL, padding: "16px 18px 6px" }}>Corrective actions ({actionRows.length})</div>
         {actionRows.length === 0 ? (
@@ -85,7 +91,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
         </div>
       </details>
 
-      {user.role === "ADMIN" && <SharePanel auditId={audit.id} initialToken={audit.shareToken} canShare={!audit.draft && !audit.pendingApproval} />}
+      <SharePanel auditId={audit.id} initialToken={audit.shareToken} canShare={!audit.draft && !audit.pendingApproval && !audit.readyToSubmit} />
 
       <div className="card-soft no-print" style={{ padding: 16, maxWidth: 760, marginTop: 16 }}>
         <div style={{ ...SECTION_LABEL, marginBottom: 8 }}>Activity</div>
@@ -102,6 +108,8 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
           </div>
         ))}
       </div>
+      </>
+      )}
     </div>
   );
 }

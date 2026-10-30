@@ -71,6 +71,8 @@ function tap_ops_install_schema() {
   draft tinyint(1) NOT NULL DEFAULT 0,
   pending_approval tinyint(1) NOT NULL DEFAULT 0,
   needs_correction tinyint(1) NOT NULL DEFAULT 0,
+  ready_to_submit tinyint(1) NOT NULL DEFAULT 0,
+  correction_note text,
   audit_date datetime NOT NULL,
   responses longtext,
   notes longtext,

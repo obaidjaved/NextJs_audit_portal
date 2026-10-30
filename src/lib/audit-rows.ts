@@ -21,7 +21,9 @@ export interface AuditRow {
   services: string[];
   review: ReviewStatus | null; // null = no audit yet
   submitted: boolean; // a report exists to view
-  editable: boolean; // still a draft: in progress, or sent back for correction
+  editable: boolean; // the auditor can still edit it: in progress, completed but not submitted, or sent back
+  canSubmit: boolean; // completed, waiting for the auditor to submit it to the admin
+  correctionNote: string; // the admin's instructions while it is sent back
   approved: boolean; // the report can be sent to the customer
   customerCompleted: boolean;
   email: string | null;
@@ -36,8 +38,9 @@ export function matchesView(r: AuditRow, view: AuditView, todayKey: string): boo
   if (view === "unassigned") return !r.auditorId && !r.customerCompleted;
   if (view === "upcoming") return !!r.auditorId && !r.customerCompleted && !!r.neededBy && r.neededBy >= todayKey;
   if (view === "completed") return r.approved;
-  if (view === "due") return !r.approved && !r.customerCompleted;
-  if (view === "today") return !r.approved && !r.customerCompleted && r.neededBy === todayKey;
+  // "Due" is what still needs the auditor: a report waiting for the admin's review is no longer their task.
+  if (view === "due") return !r.approved && !r.customerCompleted && r.review !== "Pending approval";
+  if (view === "today") return !r.approved && !r.customerCompleted && r.review !== "Pending approval" && r.neededBy === todayKey;
   return true;
 }
 
@@ -79,7 +82,9 @@ export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow
       services,
       review: reviewStatus(a),
       submitted: !a.draft || a.needsCorrection,
-      editable: a.draft,
+      editable: a.draft || a.readyToSubmit,
+      canSubmit: a.readyToSubmit,
+      correctionNote: a.needsCorrection ? a.correctionNote ?? "" : "",
       approved: isApproved(a),
       customerCompleted: c?.progressStatus === "Completed",
       email: c?.email ?? a.customer.email,
@@ -108,6 +113,8 @@ export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow
       review: null,
       submitted: false,
       editable: false,
+      canSubmit: false,
+      correctionNote: "",
       approved: false,
       customerCompleted: false,
       email: c.email,

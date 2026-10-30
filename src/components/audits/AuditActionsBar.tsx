@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { approveAudit, duplicateAudit } from "@/lib/actions/audits";
 import { CorrectionDialog } from "./CorrectionDialog";
+import { SubmitReportButton } from "./SubmitReportButton";
 
 export function AuditActionsBar({
   auditId,
@@ -13,6 +14,8 @@ export function AuditActionsBar({
   pendingApproval,
   canApprove,
   title = "",
+  isAdmin = true,
+  readyToSubmit = false,
   canEdit = true,
   needsCorrection = false,
 }: {
@@ -21,6 +24,8 @@ export function AuditActionsBar({
   pendingApproval: boolean;
   canApprove: boolean;
   title?: string;
+  isAdmin?: boolean;
+  readyToSubmit?: boolean;
   canEdit?: boolean;
   needsCorrection?: boolean;
 }) {
@@ -51,6 +56,27 @@ export function AuditActionsBar({
         setError(err instanceof Error ? err.message : "Failed to duplicate.");
       }
     });
+  }
+
+  // The auditor's page after completing an audit: just "Edit Report" and "Submit" (and nothing once it has been submitted).
+  if (!isAdmin) {
+    return (
+      <div className="no-print" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {canEdit && (
+            <Link href={`/audits/${auditId}/edit`} className={readyToSubmit ? "btn ghost sm" : "btn primary sm"}>
+              {draft && !needsCorrection ? "Continue" : "Edit Report"}
+            </Link>
+          )}
+          {readyToSubmit && <SubmitReportButton auditId={auditId} />}
+        </div>
+        {!canEdit && (
+          <p style={{ fontSize: 12, color: "var(--ink-2)", margin: 0, maxWidth: 260, textAlign: "right" }}>
+            Submitted to the admin. It can only be edited if the admin sends it back for corrections.
+          </p>
+        )}
+      </div>
+    );
   }
 
   return (

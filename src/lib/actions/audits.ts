@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { audits, templates, type Audit, RepoError, customers } from "@/lib/repo";
+import { headers } from "next/headers";
+import { audits, templates, type Audit, RepoError, customers, users, mail } from "@/lib/repo";
 import { auditInputSchema } from "@/lib/validation/audit";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/scoring";
@@ -36,6 +37,8 @@ export async function saveAudit(input: unknown) {
     const score = data.draft ? null : computeScore(responses);
     const criticalFail = data.draft ? false : computeCriticalFail(responses);
     const pendingApproval = !data.draft && (user.role !== "ADMIN" || template.approvalRequired);
+    // An auditor's completed audit is kept for them to submit to the admin (it isn't with the admin yet).
+    const readyToSubmit = !data.draft && user.role !== "ADMIN";
 
     // Document numbers come from an atomic counter; if two saves still collide on the
     // unique index, take the next number and try again.
@@ -52,6 +55,7 @@ export async function saveAudit(input: unknown) {
           criticalFail,
           draft: data.draft,
           pendingApproval,
+          readyToSubmit,
           responses: data.responses,
           notes: data.notes,
           photos: data.photos,
@@ -63,7 +67,7 @@ export async function saveAudit(input: unknown) {
     }
     if (!audit) throw new Error("Could not allocate a document number. Please try again.");
 
-    await logEvent(audit.id, user.id, data.draft ? "Draft started" : "Inspection submitted");
+    await logEvent(audit.id, user.id, data.draft ? "Draft started" : readyToSubmit ? "Audit completed" : "Inspection submitted");
     if (!data.draft) {
       const raised = await syncActionsFromAudit(audit, responses);
       if (raised > 0) await logEvent(audit.id, user.id, raisedMessage(raised));
@@ -90,6 +94,7 @@ export async function updateAudit(id: string, input: unknown) {
     const score = data.draft ? null : computeScore(responses);
     const criticalFail = data.draft ? false : computeCriticalFail(responses);
     const pendingApproval = !data.draft && (user.role !== "ADMIN" || existing.template.approvalRequired);
+    const readyToSubmit = !data.draft && user.role !== "ADMIN";
 
     await audits.update(id, {
       responses: data.responses,
@@ -100,11 +105,13 @@ export async function updateAudit(id: string, input: unknown) {
       score,
       criticalFail,
       pendingApproval,
-      // Submitting again answers a "needs correction" request.
+      readyToSubmit,
+      // Completing the audit again answers a "needs correction" request.
       needsCorrection: data.draft ? undefined : false,
+      correctionNote: data.draft ? undefined : "",
     });
 
-    await logEvent(id, user.id, data.draft ? "Draft saved" : "Inspection submitted");
+    await logEvent(id, user.id, data.draft ? "Draft saved" : readyToSubmit ? "Audit completed" : "Inspection submitted");
     if (!data.draft) {
       const raised = await syncActionsFromAudit({ id, customerId: existing.customerId, title: existing.title }, responses);
       if (raised > 0) await logEvent(id, user.id, raisedMessage(raised));
@@ -159,6 +166,9 @@ export async function duplicateAudit(id: string) {
 export async function approveAudit(id: string) {
   return attempt(async () => {
     const user = await requireAdmin();
+    const audit = await audits.get(id);
+    if (!audit) throw notFound("audit");
+    if (audit.draft || audit.readyToSubmit) throw new Error("The auditor hasn't submitted this report yet.");
     await audits.update(id, { pendingApproval: false });
     await logEvent(id, user.id, "Approved for release");
     revalidatePath("/audits");
@@ -191,15 +201,53 @@ export async function setAuditSharing(id: string, enabled: boolean) {
   });
 }
 
+// Emails the auditor that a report came back. Best effort: the in-app notice and the report itself carry the same instructions.
+async function notifyAuditor(audit: Audit, instructions: string) {
+  try {
+    const customer = await customers.get(audit.customerId);
+    const auditorId = customer?.assignedAuditorId ?? audit.inspectorId;
+    if (!auditorId) return;
+    const auditor = (await users.list()).find((u) => u.id === auditorId);
+    if (!auditor?.email) return;
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    const link = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}/audits/${audit.id}/edit` : "";
+    await mail.send({
+      to: auditor.email,
+      subject: `Corrections requested: ${audit.docNumber} — ${audit.customer.name}`,
+      body: `Hello ${auditor.name},\n\nThe administrator sent audit ${audit.docNumber} (${audit.customer.name}) back for corrections:\n\n${instructions}\n\n${link ? `Open the report: ${link}\n\n` : ""}Once it's corrected, complete the audit and submit it again.`,
+    });
+  } catch {
+    // Never block the review because an email failed.
+  }
+}
+
+// The auditor sends their completed audit to the admin. From then on it is view-only for them.
+export async function submitAudit(id: string) {
+  return attempt(async () => {
+    const user = await requireStaff();
+    const audit = await audits.get(id);
+    if (!audit || !(await canAccessAudit(user, audit))) throw notFound("audit");
+    if (audit.draft) throw new Error("Complete the audit before submitting it.");
+    if (!audit.readyToSubmit) throw new Error("This report has already been submitted to the admin.");
+    await audits.update(id, { readyToSubmit: false, pendingApproval: true });
+    await logEvent(id, user.id, "Submitted to the admin");
+    revalidatePath("/audits");
+    revalidatePath(`/audits/${id}`);
+    revalidatePath("/");
+  });
+}
+
 // An admin reviews a submitted audit: approve it, or send it back to the auditor to be corrected.
 export async function setAuditReview(id: string, status: "Approved" | "Needs Correction", note?: string) {
   return attempt(async () => {
-    await requireAdmin();
+    const admin = await requireAdmin();
     if (status !== "Approved" && status !== "Needs Correction") throw new Error("Unknown status.");
     const audit = await audits.get(id);
     if (!audit) throw notFound("audit");
     if (status === "Approved") {
       if (audit.needsCorrection) throw new Error("This audit is with the auditor for corrections. It can be approved once they submit it again.");
+      if (audit.readyToSubmit) throw new Error("The auditor has completed this audit but hasn't submitted it to you yet.");
       if (audit.draft) throw new Error("This audit hasn't been submitted yet, so it can't be approved.");
       await audits.update(id, { pendingApproval: false, needsCorrection: false });
       await logEvent(id, undefined, "Approved for release");
@@ -208,8 +256,9 @@ export async function setAuditReview(id: string, status: "Approved" | "Needs Cor
       if (!instructions) throw new Error("Please tell the auditor what needs to be corrected.");
       if (instructions.length > MAX_CORRECTION_NOTE) throw new Error(`Please keep the instructions under ${MAX_CORRECTION_NOTE} characters.`);
       // Back to the auditor as a draft; they fix it and submit it again.
-      await audits.update(id, { draft: true, pendingApproval: false, needsCorrection: true });
-      await logEvent(id, undefined, CORRECTION_PREFIX + instructions);
+      await audits.update(id, { draft: true, pendingApproval: false, readyToSubmit: false, needsCorrection: true, correctionNote: instructions });
+      await logEvent(id, admin.id, CORRECTION_PREFIX + instructions);
+      await notifyAuditor(audit, instructions);
     }
     revalidatePath("/audits");
     revalidatePath(`/audits/${id}`);

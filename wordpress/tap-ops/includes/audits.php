@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const TAP_OPS_AUDIT_LIST_COLS = 'a.id, a.doc_number, a.template_id, a.customer_id, a.inspector_id, a.title, a.score, a.critical_fail, a.draft, a.pending_approval, a.needs_correction, a.audit_date, a.share_token, a.created_at, a.updated_at';
+const TAP_OPS_AUDIT_LIST_COLS = 'a.id, a.doc_number, a.template_id, a.customer_id, a.inspector_id, a.title, a.score, a.critical_fail, a.draft, a.pending_approval, a.needs_correction, a.ready_to_submit, a.correction_note, a.audit_date, a.share_token, a.created_at, a.updated_at';
 
 /**
  * Turn audit rows into API objects.
@@ -63,6 +63,8 @@ function tap_ops_audits_out( array $rows, $mode = 'full' ) {
 			'draft'           => (bool) (int) $r['draft'],
 			'pendingApproval' => (bool) (int) $r['pending_approval'],
 			'needsCorrection' => ! empty( $r['needs_correction'] ),
+			'readyToSubmit'   => ! empty( $r['ready_to_submit'] ),
+			'correctionNote'  => isset( $r['correction_note'] ) ? (string) $r['correction_note'] : '',
 			'date'            => tap_ops_iso( $r['audit_date'] ),
 		);
 		if ( array_key_exists( 'responses', $r ) ) {
@@ -124,6 +126,7 @@ function tap_ops_audit_input( array $b ) {
 		'draft'           => 'draft',
 		'pendingApproval' => 'pending_approval',
 		'needsCorrection' => 'needs_correction',
+		'readyToSubmit'   => 'ready_to_submit',
 	);
 	foreach ( $flags as $key => $col ) {
 		if ( array_key_exists( $key, $b ) ) {
@@ -141,6 +144,12 @@ function tap_ops_audit_input( array $b ) {
 			}
 			$d[ $key ] = tap_ops_json_in( array_values( $b[ $key ] ) );
 		}
+	}
+	if ( array_key_exists( 'correctionNote', $b ) ) {
+		if ( null !== $b['correctionNote'] && ! is_string( $b['correctionNote'] ) ) {
+			return tap_ops_err( 422, 'validation', 'correctionNote must be a string.' );
+		}
+		$d['correction_note'] = null === $b['correctionNote'] ? '' : tap_ops_textarea( $b['correctionNote'], 2000 );
 	}
 	if ( array_key_exists( 'notes', $b ) ) {
 		if ( null !== $b['notes'] && ! is_string( $b['notes'] ) ) {

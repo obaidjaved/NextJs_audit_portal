@@ -1,10 +1,12 @@
 import type { Audit } from "./repo-types";
 
 // What an admin sees for an audit's review state.
-export type ReviewStatus = "Approved" | "Needs Correction" | "Pending approval" | "In progress";
+export type ReviewStatus = "Approved" | "Needs Correction" | "Pending approval" | "Ready to submit" | "In progress";
 
-export function reviewStatus(a: Pick<Audit, "draft" | "pendingApproval" | "needsCorrection">): ReviewStatus {
+export function reviewStatus(a: Pick<Audit, "draft" | "pendingApproval" | "needsCorrection" | "readyToSubmit">): ReviewStatus {
   if (a.draft) return a.needsCorrection ? "Needs Correction" : "In progress";
+  // Completed by the auditor but not yet sent to the admin.
+  if (a.readyToSubmit) return "Ready to submit";
   if (a.pendingApproval) return "Pending approval";
   return "Approved";
 }
@@ -23,4 +25,4 @@ export function latestCorrectionNote(events: { message: string; createdAt: Date 
 }
 
 // An approved audit is final: its report can be sent to the customer.
-export const isApproved = (a: Pick<Audit, "draft" | "pendingApproval">) => !a.draft && !a.pendingApproval;
+export const isApproved = (a: Pick<Audit, "draft" | "pendingApproval" | "readyToSubmit">) => !a.draft && !a.pendingApproval && !a.readyToSubmit;

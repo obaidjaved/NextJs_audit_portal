@@ -136,6 +136,8 @@ model Audit {
   draft           Boolean  @default(true)
   pendingApproval Boolean  @default(false)
   needsCorrection Boolean  @default(false) // an admin sent a submitted audit back to the auditor
+  readyToSubmit   Boolean  @default(false) // the auditor completed it but hasn't submitted it to the admin yet
+  correctionNote  String   @default("") // the admin's instructions when sent back
   date            DateTime @default(now())
   responses       Json     @default("[]")
   notes           String   @default("")

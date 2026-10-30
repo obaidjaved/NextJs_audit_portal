@@ -12,6 +12,7 @@ import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
 import { fmtDate } from "@/components/ops/Parts";
 import { EmailDialog, type EmailTemplateRow } from "./EmailDialog";
 import { ReviewSelect } from "./ReviewSelect";
+import { SubmitReportButton } from "./SubmitReportButton";
 
 const VIEW_OPTIONS: { value: AuditView; label: string }[] = [
   { value: "all", label: "All" },
@@ -27,8 +28,8 @@ const AUDITOR_VIEW_OPTIONS: { value: AuditView; label: string }[] = [
   { value: "completed", label: "Completed" },
 ];
 
-const REVIEW_PILL: Record<ReviewStatus, string> = { Approved: "ok", "Needs Correction": "danger", "Pending approval": "warn", "In progress": "pending" };
-const STATUS_FILTER: string[] = ["All", "Approved", "Needs Correction", "Pending approval", "In progress", "No audit yet"];
+const REVIEW_PILL: Record<ReviewStatus, string> = { Approved: "ok", "Needs Correction": "danger", "Pending approval": "warn", "Ready to submit": "warn", "In progress": "pending" };
+const STATUS_FILTER: string[] = ["All", "Approved", "Needs Correction", "Pending approval", "Ready to submit", "In progress", "No audit yet"];
 
 // Header label + column width (% of the table).
 const AUDITOR_COLS: [string, string][] = [
@@ -101,13 +102,25 @@ export function AuditsTable({
         {r.address && <span className="dt-contact-line">{r.address}</span>}
       </>
     );
+    // The admin's instructions, printed right under the details, for a report that was sent back.
+    const instructions =
+      !isAdmin && r.review === "Needs Correction" ? (
+        <div role="note" style={{ marginTop: 6, padding: "6px 8px", borderLeft: "3px solid var(--danger)", background: "var(--danger-wash, rgba(220,38,38,.07))", fontSize: 12, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>
+          <strong>Corrections requested:</strong> {r.correctionNote || "See the report for the admin's instructions."}
+        </div>
+      ) : null;
     return {
-      name: r.auditId ? (
-        <Link href={`/audits/${r.auditId}`} className="dt-contact" style={{ textDecoration: "none", color: "inherit" }}>
-          {nameInner}
-        </Link>
-      ) : (
-        <div className="dt-contact">{nameInner}</div>
+      name: (
+        <div>
+          {r.auditId ? (
+            <Link href={`/audits/${r.auditId}`} className="dt-contact" style={{ textDecoration: "none", color: "inherit" }}>
+              {nameInner}
+            </Link>
+          ) : (
+            <div className="dt-contact">{nameInner}</div>
+          )}
+          {instructions}
+        </div>
       ),
       assigned: fmtDate(r.assignedAt),
       done: fmtDate(r.doneAt),
@@ -137,10 +150,11 @@ export function AuditsTable({
             </span>
           )}
           {r.auditId && r.editable && (
-            <Link className="btn primary sm" href={`/audits/${r.auditId}/edit`}>
-              {r.review === "Needs Correction" ? "Edit report" : "Continue"}
+            <Link className={r.canSubmit ? "btn ghost sm" : "btn primary sm"} href={`/audits/${r.auditId}/edit`}>
+              {r.review === "In progress" ? "Continue" : "Edit report"}
             </Link>
           )}
+          {r.auditId && r.canSubmit && <SubmitReportButton auditId={r.auditId} />}
           {!r.auditId && (
             <Link className="btn primary sm" href={`/new-audit?customerId=${r.customerId}`}>
               Start audit

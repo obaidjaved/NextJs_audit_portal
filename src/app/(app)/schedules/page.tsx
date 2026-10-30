@@ -12,7 +12,7 @@ export default async function SchedulesPage() {
     const [audits, customers] = await Promise.all([auditsRepo.list({ noResponses: true }), customersRepo.list()]);
     // Open jobs assigned to this auditor, the soonest service date first (no date goes last).
     const rows = buildAuditorRows(audits, customers, user.id)
-      .filter((r) => !r.approved && !r.customerCompleted)
+      .filter((r) => !r.approved && !r.customerCompleted && r.review !== "Pending approval")
       .sort((a, b) => (a.neededBy ?? "9999").localeCompare(b.neededBy ?? "9999"));
     return (
       <div>

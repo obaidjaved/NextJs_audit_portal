@@ -17,10 +17,10 @@ export async function canAccessAudit(user: SessionUser, audit: Pick<Audit, "insp
   return customer?.assignedAuditorId === user.id;
 }
 
-// A submitted report is locked for auditors. It opens again only when the administrator sends it back
-// for correction (that turns it into a draft again), so "draft" is the whole rule.
-export function canEditAudit(user: Pick<SessionUser, "role">, audit: Pick<Audit, "draft">): boolean {
-  return user.role === "ADMIN" || audit.draft;
+// An auditor can edit a report until they submit it to the admin (while it's in progress or completed but not yet submitted).
+// Once submitted it is locked; it opens again only when the administrator sends it back for correction.
+export function canEditAudit(user: Pick<SessionUser, "role">, audit: Pick<Audit, "draft" | "readyToSubmit">): boolean {
+  return user.role === "ADMIN" || audit.draft || audit.readyToSubmit;
 }
 
-export const LOCKED_MESSAGE = "This report has been submitted. It can only be edited if the administrator sends it back for corrections.";
+export const LOCKED_MESSAGE = "This report has been submitted to the admin. It can only be edited if the administrator sends it back for corrections.";
