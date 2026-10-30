@@ -2,17 +2,16 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { setAuditReview } from "@/lib/actions/audits";
 import { updateCustomerOps } from "@/lib/actions/ops";
 import type { ReviewStatus } from "@/lib/audit-review";
 import { matchesView, type AuditRow, type AuditView } from "@/lib/audit-rows";
 import { serviceTypesOf } from "@/lib/ops-options";
 import { SERVICE_GROUPS } from "@/lib/quote-options";
 import { AuditorCombobox } from "@/components/ops/AuditorCombobox";
-import { InlineSelect } from "@/components/ops/Inline";
 import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
 import { fmtDate } from "@/components/ops/Parts";
 import { EmailDialog, type EmailTemplateRow } from "./EmailDialog";
+import { ReviewSelect } from "./ReviewSelect";
 
 const VIEW_OPTIONS: { value: AuditView; label: string }[] = [
   { value: "all", label: "All" },
@@ -29,7 +28,6 @@ const AUDITOR_VIEW_OPTIONS: { value: AuditView; label: string }[] = [
 ];
 
 const REVIEW_PILL: Record<ReviewStatus, string> = { Approved: "ok", "Needs Correction": "danger", "Pending approval": "warn", "In progress": "pending" };
-const REVIEW_OPTIONS = ["Approved", "Needs Correction"];
 const STATUS_FILTER: string[] = ["All", "Approved", "Needs Correction", "Pending approval", "In progress", "No audit yet"];
 
 // Header label + column width (% of the table).
@@ -122,7 +120,7 @@ export function AuditsTable({
       status: !r.review ? (
         <span className="pill pending" style={{ textTransform: "none", letterSpacing: 0 }}>No audit yet</span>
       ) : isAdmin ? (
-        <InlineSelect label="Review status" value={r.review} options={REVIEW_OPTIONS} onSave={(v) => setAuditReview(r.auditId as string, v as "Approved" | "Needs Correction")} />
+        <ReviewSelect auditId={r.auditId as string} value={r.review} title={`${r.company}${r.code ? ` — ${r.code}` : ""}`} />
       ) : (
         <span className={`pill ${REVIEW_PILL[r.review]}`} style={{ textTransform: "none", letterSpacing: 0 }}>{r.review}</span>
       ),

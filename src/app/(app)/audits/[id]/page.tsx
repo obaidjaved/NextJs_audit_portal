@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/access";
 import { canAccessAudit, canEditAudit } from "@/lib/audit-access";
+import { latestCorrectionNote } from "@/lib/audit-review";
 import { audits, actions, users } from "@/lib/repo";
 import { AuditReport } from "@/components/audits/AuditReport";
 import { AuditActionsBar } from "@/components/audits/AuditActionsBar";
@@ -45,6 +46,12 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div>
+      {audit.needsCorrection && (
+        <div role="status" className="card-soft no-print" style={{ padding: 14, maxWidth: 760, marginBottom: 12, borderLeft: "3px solid var(--danger)" }}>
+          <div style={{ ...SECTION_LABEL, color: "var(--danger)", marginBottom: 4 }}>Corrections requested</div>
+          <p style={{ margin: 0, fontSize: 13.5, whiteSpace: "pre-wrap" }}>{latestCorrectionNote(events) ?? "The administrator sent this report back for corrections."}</p>
+        </div>
+      )}
       <AuditReport
         audit={audit}
         headerSlot={
@@ -53,6 +60,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
             draft={audit.draft}
             pendingApproval={audit.pendingApproval}
             canApprove={user.role === "ADMIN"}
+            title={`${audit.customer.name} — ${audit.docNumber}`}
             canEdit={canEditAudit(user, audit)}
             needsCorrection={audit.needsCorrection}
           />
@@ -77,7 +85,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
         </div>
       </details>
 
-      <SharePanel auditId={audit.id} initialToken={audit.shareToken} canShare={!audit.draft && !audit.pendingApproval} />
+      {user.role === "ADMIN" && <SharePanel auditId={audit.id} initialToken={audit.shareToken} canShare={!audit.draft && !audit.pendingApproval} />}
 
       <div className="card-soft no-print" style={{ padding: 16, maxWidth: 760, marginTop: 16 }}>
         <div style={{ ...SECTION_LABEL, marginBottom: 8 }}>Activity</div>

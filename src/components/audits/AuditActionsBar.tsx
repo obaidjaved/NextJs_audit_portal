@@ -5,12 +5,14 @@ import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { approveAudit, duplicateAudit } from "@/lib/actions/audits";
+import { CorrectionDialog } from "./CorrectionDialog";
 
 export function AuditActionsBar({
   auditId,
   draft,
   pendingApproval,
   canApprove,
+  title = "",
   canEdit = true,
   needsCorrection = false,
 }: {
@@ -18,12 +20,14 @@ export function AuditActionsBar({
   draft: boolean;
   pendingApproval: boolean;
   canApprove: boolean;
+  title?: string;
   canEdit?: boolean;
   needsCorrection?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [correcting, setCorrecting] = useState(false);
 
   function approve() {
     setError(null);
@@ -68,6 +72,11 @@ export function AuditActionsBar({
         <button type="button" className="btn ghost sm" disabled={pending} onClick={duplicate}>
           Duplicate
         </button>
+        {canApprove && !draft && (
+          <button type="button" className="btn ghost sm" disabled={pending} onClick={() => setCorrecting(true)}>
+            Needs corrections
+          </button>
+        )}
         {pendingApproval && canApprove && (
           <button type="button" className="btn primary sm" disabled={pending} onClick={approve}>
             {pending ? "Approving…" : "Approve Audit"}
@@ -75,6 +84,7 @@ export function AuditActionsBar({
         )}
       </div>
       {error && <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{error}</p>}
+      {correcting && <CorrectionDialog auditId={auditId} title={title} onClose={() => setCorrecting(false)} />}
     </div>
   );
 }

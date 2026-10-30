@@ -8,6 +8,7 @@ import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/sc
 import { nextDocNumber } from "@/lib/doc-number";
 import { requireStaff, requireAdmin } from "@/lib/access";
 import { canAccessAudit, canEditAudit, LOCKED_MESSAGE } from "@/lib/audit-access";
+import { CORRECTION_PREFIX, MAX_CORRECTION_NOTE } from "@/lib/audit-review";
 import { syncActionsFromAudit, logEvent } from "@/lib/corrective";
 import { attempt } from "./result";
 
@@ -34,7 +35,7 @@ export async function saveAudit(input: unknown) {
     const responses = data.responses as ResponseObject[];
     const score = data.draft ? null : computeScore(responses);
     const criticalFail = data.draft ? false : computeCriticalFail(responses);
-    const pendingApproval = !data.draft && template.approvalRequired;
+    const pendingApproval = !data.draft && (user.role !== "ADMIN" || template.approvalRequired);
 
     // Document numbers come from an atomic counter; if two saves still collide on the
     // unique index, take the next number and try again.
@@ -88,7 +89,7 @@ export async function updateAudit(id: string, input: unknown) {
     const responses = data.responses as ResponseObject[];
     const score = data.draft ? null : computeScore(responses);
     const criticalFail = data.draft ? false : computeCriticalFail(responses);
-    const pendingApproval = !data.draft && existing.template.approvalRequired;
+    const pendingApproval = !data.draft && (user.role !== "ADMIN" || existing.template.approvalRequired);
 
     await audits.update(id, {
       responses: data.responses,
@@ -176,7 +177,8 @@ export async function deleteAudit(id: string) {
 // Enables/disables the public read-only report link for a finished audit.
 export async function setAuditSharing(id: string, enabled: boolean) {
   return attempt(async () => {
-    const user = await requireStaff();
+    // Sharing with the client is the administrator's call, once the report is approved.
+    const user = await requireAdmin();
     const audit = await audits.get(id);
     if (!audit) throw new Error("Audit not found.");
     if (enabled && (audit.draft || audit.pendingApproval)) {
@@ -190,7 +192,7 @@ export async function setAuditSharing(id: string, enabled: boolean) {
 }
 
 // An admin reviews a submitted audit: approve it, or send it back to the auditor to be corrected.
-export async function setAuditReview(id: string, status: "Approved" | "Needs Correction") {
+export async function setAuditReview(id: string, status: "Approved" | "Needs Correction", note?: string) {
   return attempt(async () => {
     await requireAdmin();
     if (status !== "Approved" && status !== "Needs Correction") throw new Error("Unknown status.");
@@ -202,9 +204,12 @@ export async function setAuditReview(id: string, status: "Approved" | "Needs Cor
       await audits.update(id, { pendingApproval: false, needsCorrection: false });
       await logEvent(id, undefined, "Approved for release");
     } else {
+      const instructions = (note ?? "").trim();
+      if (!instructions) throw new Error("Please tell the auditor what needs to be corrected.");
+      if (instructions.length > MAX_CORRECTION_NOTE) throw new Error(`Please keep the instructions under ${MAX_CORRECTION_NOTE} characters.`);
       // Back to the auditor as a draft; they fix it and submit it again.
       await audits.update(id, { draft: true, pendingApproval: false, needsCorrection: true });
-      await logEvent(id, undefined, "Sent back for correction");
+      await logEvent(id, undefined, CORRECTION_PREFIX + instructions);
     }
     revalidatePath("/audits");
     revalidatePath(`/audits/${id}`);

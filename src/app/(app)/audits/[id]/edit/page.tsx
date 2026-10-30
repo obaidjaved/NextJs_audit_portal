@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { audits } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 import { canAccessAudit, canEditAudit } from "@/lib/audit-access";
+import { latestCorrectionNote } from "@/lib/audit-review";
 import { AuditForm } from "@/components/audit-form/AuditForm";
 import type { TemplateField } from "@/lib/field-types";
 import type { ResponseObject } from "@/lib/scoring";
@@ -13,6 +14,9 @@ export default async function EditAuditPage({ params }: { params: Promise<{ id: 
   if (!audit || !(await canAccessAudit(user, audit))) notFound();
   // Submitted reports are read-only for auditors unless the administrator sent them back.
   if (!canEditAudit(user, audit)) redirect(`/audits/${id}`);
+
+  // If the administrator sent this report back, show their instructions above the form.
+  const correction = audit.needsCorrection ? latestCorrectionNote(await audits.events(id)) : null;
 
   const fields = Array.isArray(audit.template.fields) ? (audit.template.fields as unknown as TemplateField[]) : [];
   const responseList = Array.isArray(audit.responses) ? (audit.responses as unknown as ResponseObject[]) : [];
@@ -32,6 +36,13 @@ export default async function EditAuditPage({ params }: { params: Promise<{ id: 
   });
 
   return (
+    <>
+      {audit.needsCorrection && (
+        <div role="status" className="card-soft" style={{ padding: 14, maxWidth: 860, margin: "0 auto 12px", borderLeft: "3px solid var(--danger)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--danger)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>Corrections requested</div>
+          <p style={{ margin: 0, fontSize: 13.5, whiteSpace: "pre-wrap" }}>{correction ?? "The administrator sent this report back for corrections."}</p>
+        </div>
+      )}
     <AuditForm
       // Forces a remount when navigating directly between two different
       // audits' edit pages, so stale form state can't be saved over the
@@ -50,5 +61,6 @@ export default async function EditAuditPage({ params }: { params: Promise<{ id: 
         signature: audit.signature,
       }}
     />
+    </>
   );
 }
