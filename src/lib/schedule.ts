@@ -40,6 +40,17 @@ export function dateOnlyStringUTC(date: Date): string {
   return `${date.getUTCFullYear()}-${month}-${day}`;
 }
 
+// "Today" as a YYYY-MM-DD string in the business's own time zone (set APP_TIMEZONE; default US Central).
+// Using the UTC date would call it tomorrow every evening in the US, and "due today" would be wrong.
+export function todayKey(now: Date = new Date()): string {
+  const zone = process.env.APP_TIMEZONE || "America/Chicago";
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  } catch {
+    return dateOnlyStringUTC(now);
+  }
+}
+
 export const FREQUENCY_LABEL: Record<ScheduleFrequency, string> = {
   WEEKLY: "Weekly",
   BIWEEKLY: "Biweekly",

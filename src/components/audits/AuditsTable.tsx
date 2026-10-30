@@ -56,6 +56,8 @@ export function AuditsTable({
   isAdmin,
   initialView = "all",
   initialQuery = "",
+  initialStatus = "All",
+  todayKey: today,
 }: {
   rows: AuditRow[];
   templates: EmailTemplateRow[];
@@ -63,13 +65,15 @@ export function AuditsTable({
   isAdmin: boolean;
   initialView?: AuditView;
   initialQuery?: string;
+  initialStatus?: string;
+  todayKey: string;
 }) {
   const [search, setSearch] = useState(initialQuery);
   const [view, setView] = useState<string>(initialView);
-  const [status, setStatus] = useState("All");
+  const [status, setStatus] = useState(STATUS_FILTER.includes(initialStatus) ? initialStatus : "All");
   const [auditor, setAuditor] = useState("All");
   const [service, setService] = useState("All");
-  const [todayKey] = useState(() => new Date().toISOString().slice(0, 10));
+  const todayKey = today;
   const [emailKey, setEmailKey] = useState<string | null>(null);
 
   const cols = isAdmin ? COLS : AUDITOR_COLS;
@@ -213,7 +217,7 @@ export function AuditsTable({
 
       {filtered.length === 0 ? (
         <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
-          {rows.length === 0 ? (isAdmin ? "No audits yet." : "No audits have been assigned to you yet.") : "Nothing matches these filters."}
+          {rows.length === 0 ? (isAdmin ? "No audits yet. Pick an auditor for a customer's job, or start one with + New Audit." : "No audits have been assigned to you yet.") : "Nothing matches these filters."}
         </div>
       ) : (
         <>

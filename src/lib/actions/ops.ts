@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireStaff } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
+import { emailTeamMember } from "@/lib/notify";
 import { customers, requests, RepoError, type CustomerInput } from "@/lib/repo";
 import { LEAD_STATUSES } from "@/lib/ops-options";
 import { ALL_SERVICES } from "@/lib/quote-options";
@@ -31,7 +32,7 @@ const leadPatchSchema = z
 // creates the customer.
 export async function updateLead(id: string, input: unknown): Promise<ActionResult> {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const patch = parseOrThrow(leadPatchSchema, input);
     if (patch.leadStatus === "Converted") throw new Error("Use Convert on the lead's details to turn it into a customer.");
     await requests.update(id, patch);
@@ -54,11 +55,21 @@ const customerOpsSchema = z
 export async function updateCustomerOps(id: string, input: unknown): Promise<ActionResult> {
   return attempt(async () => {
     const patch = parseOrThrow(customerOpsSchema, input);
-    // Handing a customer to an auditor is an administrator's call.
-    if (patch.assignedAuditorId !== undefined) await requireAdmin();
-    else await requireStaff();
+    await requireAdmin();
+    // Tell the auditor when a job is given to them (only if it's a change).
+    const before = patch.assignedAuditorId ? await customers.get(id).catch(() => null) : null;
     await customers.update(id, patch as never);
+    if (patch.assignedAuditorId && before && before.assignedAuditorId !== patch.assignedAuditorId) {
+      const place = [before.site, before.city].filter(Boolean).join(", ");
+      await emailTeamMember(
+        patch.assignedAuditorId,
+        `New audit assigned: ${before.name}`,
+        [`You have been assigned an audit for ${before.name}${place ? ` (${place})` : ""}.`, before.serviceDate ? `Service needed by: ${before.serviceDate}.` : ""].filter(Boolean),
+        "/audits",
+      );
+    }
     revalidatePath("/customers");
+    revalidatePath("/audits");
   });
 }
 

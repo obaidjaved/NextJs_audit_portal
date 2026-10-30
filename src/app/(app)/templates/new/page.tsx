@@ -1,6 +1,8 @@
+import { requireAdminPage } from "@/lib/access";
 import { TemplateBuilder } from "@/components/template-builder/TemplateBuilder";
 
-export default function NewTemplatePage() {
+export default async function NewTemplatePage() {
+  await requireAdminPage();
   return (
     <div>
       <h1 className="disp" style={{ fontSize: 22, fontWeight: 800, marginBottom: 20 }}>

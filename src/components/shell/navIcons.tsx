@@ -1,5 +1,12 @@
 // Inline SVGs ported directly from design-3.html's sidebar nav icons.
 export const NavIcons = {
+  help: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7" />
+      <path d="M12 17h.01" />
+    </svg>
+  ),
   console: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M3 9.5 12 3l9 6.5" />

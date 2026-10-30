@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { templates as templatesRepo } from "@/lib/repo";
+import { requireUser } from "@/lib/access";
 
 export default async function TemplatesPage() {
+  const user = await requireUser();
   const templates = (await templatesRepo.list()).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   return (
@@ -13,9 +15,11 @@ export default async function TemplatesPage() {
             TAP Services&apos; own audit templates.
           </p>
         </div>
-        <Link href="/templates/new" className="btn sm">
-          + New Template
-        </Link>
+        {user.role === "ADMIN" && (
+          <Link href="/templates/new" className="btn sm">
+            + New Template
+          </Link>
+        )}
       </div>
 
       {templates.length === 0 ? (

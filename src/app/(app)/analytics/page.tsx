@@ -1,7 +1,7 @@
 import { audits as auditsRepo, actions as actionsRepo, customers as customersRepo } from "@/lib/repo";
 import { requireAdminPage } from "@/lib/access";
 import { computeAnalytics, type GroupStat } from "@/lib/analytics";
-import { dateOnlyStringUTC } from "@/lib/schedule";
+import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 
 const LABEL = { fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: ".05em" } as const;
 const scoreColor = (n: number) => (n >= 90 ? "var(--ok)" : n >= 70 ? "var(--warn)" : "var(--danger)");
@@ -19,7 +19,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const openList = actionList.filter((a) => a.status !== "RESOLVED");
   const openActions = openList.length;
 
-  const todayKey = dateOnlyStringUTC(new Date());
+  const todayKey = todayInBusinessZone();
   const overdue = openList.filter((a) => a.dueDate && a.dueDate < todayKey).length;
 
   const data = computeAnalytics(rows.map((r) => ({ ...r, customerName: r.customer.name, templateName: r.template.name })));

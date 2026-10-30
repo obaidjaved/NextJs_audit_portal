@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { actions as actionsRepo, customers as customersRepo, users as usersRepo } from "@/lib/repo";
 import { requireAdminPage } from "@/lib/access";
-import { dateOnlyStringUTC } from "@/lib/schedule";
+import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 import { ActionRow, type ActionRowData } from "@/components/actions/ActionRow";
 import { ActionForm } from "@/components/actions/ActionForm";
 
@@ -20,7 +20,7 @@ export default async function ActionsPage({ searchParams }: { searchParams: Prom
 
   const rows = await actionsRepo.list({ customerId });
 
-  const todayKey = dateOnlyStringUTC(new Date());
+  const todayKey = todayInBusinessZone();
   const all: ActionRowData[] = rows.map((a) => {
     const due = a.dueDate;
     return {

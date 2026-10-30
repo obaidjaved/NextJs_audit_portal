@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
-import { audits, templates, type Audit, RepoError, customers, users, mail } from "@/lib/repo";
+import { audits, templates, type Audit, RepoError, customers } from "@/lib/repo";
 import { auditInputSchema } from "@/lib/validation/audit";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/scoring";
@@ -11,6 +10,7 @@ import { requireStaff, requireAdmin } from "@/lib/access";
 import { canAccessAudit, canEditAudit, LOCKED_MESSAGE } from "@/lib/audit-access";
 import { CORRECTION_PREFIX, MAX_CORRECTION_NOTE } from "@/lib/audit-review";
 import { syncActionsFromAudit, logEvent } from "@/lib/corrective";
+import { emailTeamMember } from "@/lib/notify";
 import { attempt } from "./result";
 
 function notFound(what: string) {
@@ -201,25 +201,17 @@ export async function setAuditSharing(id: string, enabled: boolean) {
   });
 }
 
-// Emails the auditor that a report came back. Best effort: the in-app notice and the report itself carry the same instructions.
+// Emails the auditor that a report came back.
 async function notifyAuditor(audit: Audit, instructions: string) {
-  try {
-    const customer = await customers.get(audit.customerId);
-    const auditorId = customer?.assignedAuditorId ?? audit.inspectorId;
-    if (!auditorId) return;
-    const auditor = (await users.list()).find((u) => u.id === auditorId);
-    if (!auditor?.email) return;
-    const h = await headers();
-    const host = h.get("x-forwarded-host") ?? h.get("host");
-    const link = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}/audits/${audit.id}/edit` : "";
-    await mail.send({
-      to: auditor.email,
-      subject: `Corrections requested: ${audit.docNumber} — ${audit.customer.name}`,
-      body: `Hello ${auditor.name},\n\nThe administrator sent audit ${audit.docNumber} (${audit.customer.name}) back for corrections:\n\n${instructions}\n\n${link ? `Open the report: ${link}\n\n` : ""}Once it's corrected, complete the audit and submit it again.`,
-    });
-  } catch {
-    // Never block the review because an email failed.
-  }
+  const customer = await customers.get(audit.customerId).catch(() => null);
+  const auditorId = customer?.assignedAuditorId ?? audit.inspectorId;
+  if (!auditorId) return;
+  await emailTeamMember(
+    auditorId,
+    `Corrections requested: ${audit.docNumber} — ${audit.customer.name}`,
+    [`The administrator sent audit ${audit.docNumber} (${audit.customer.name}) back for corrections:`, instructions, "Once it's corrected, press Complete Audit and then Submit."],
+    `/audits/${audit.id}/edit`,
+  );
 }
 
 // The auditor sends their completed audit to the admin. From then on it is view-only for them.

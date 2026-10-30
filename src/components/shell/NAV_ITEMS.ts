@@ -3,7 +3,7 @@ export type Role = "ADMIN" | "INSPECTOR";
 export interface NavItem {
   href: string;
   label: string;
-  icon: "console" | "newAudit" | "templates" | "customers" | "newCustomer" | "audits" | "actions" | "schedules" | "analytics" | "team";
+  icon: "console" | "newAudit" | "templates" | "customers" | "newCustomer" | "audits" | "actions" | "schedules" | "analytics" | "team" | "help";
   roles: Role[];
   badge?: "requests";
 }
@@ -23,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/schedules", label: "Schedules", icon: "schedules", roles: STAFF },
   { href: "/analytics", label: "Analytics", icon: "analytics", roles: ["ADMIN"] },
   { href: "/team", label: "Team", icon: "team", roles: ["ADMIN"] },
+  { href: "/help", label: "Help", icon: "help", roles: STAFF },
 ];
 
 export function isNavActive(item: NavItem, pathname: string): boolean {

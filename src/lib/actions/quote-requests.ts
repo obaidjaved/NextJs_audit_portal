@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireStaff } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { requests, RepoError } from "@/lib/repo";
 import { leadSchema, quoteRequestSchema } from "@/lib/validation/quote-request";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -47,7 +47,7 @@ export async function submitQuoteRequest(input: unknown): Promise<ActionResult> 
 // public-form submission, with looser validation (see leadSchema).
 export async function createLead(input: unknown): Promise<ActionResult> {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const data = parseOrThrow(leadSchema, input ?? {});
     await requests.create(data, { manual: true });
     revalidatePath("/leads");

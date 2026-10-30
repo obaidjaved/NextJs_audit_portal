@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { templates } from "@/lib/repo";
+import { requireUser } from "@/lib/access";
 import { FIELD_TYPE_MAP, type TemplateField } from "@/lib/field-types";
 import { FieldTypeIcon } from "@/components/template-builder/FieldTypeIcon";
 
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireUser();
   const template = await templates.get(id);
   if (!template) notFound();
 
@@ -16,9 +18,11 @@ export default async function TemplateDetailPage({ params }: { params: Promise<{
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
         <span className="pill accent">{template.category}</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href={`/templates/${template.id}/edit`} className="btn ghost sm">
-            Edit Template
-          </Link>
+          {user.role === "ADMIN" && (
+            <Link href={`/templates/${template.id}/edit`} className="btn ghost sm">
+              Edit Template
+            </Link>
+          )}
           <Link href={`/new-audit?templateId=${template.id}`} className="btn primary sm">
             Start Audit
           </Link>

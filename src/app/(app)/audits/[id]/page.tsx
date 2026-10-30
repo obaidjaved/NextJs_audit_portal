@@ -8,7 +8,7 @@ import { AuditActionsBar } from "@/components/audits/AuditActionsBar";
 import { SharePanel } from "@/components/audits/SharePanel";
 import { ActionRow, type ActionRowData } from "@/components/actions/ActionRow";
 import { ActionForm } from "@/components/actions/ActionForm";
-import { dateOnlyStringUTC } from "@/lib/schedule";
+import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 
 const SECTION_LABEL = { fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: ".05em" } as const;
 
@@ -28,7 +28,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
   ]);
   const assignees = userRows.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }));
 
-  const todayKey = dateOnlyStringUTC(new Date());
+  const todayKey = todayInBusinessZone();
   const actionRows: ActionRowData[] = [...auditActions]
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
     .map((a) => ({

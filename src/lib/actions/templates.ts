@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { templates, RepoError } from "@/lib/repo";
 import { templateSchema } from "@/lib/validation/template";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -14,7 +14,7 @@ import { attempt } from "./result";
 
 export async function createTemplate(input: unknown) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const data = parseOrThrow(templateSchema, input);
     const template = await templates.create(data);
     revalidatePath("/templates");
@@ -24,7 +24,7 @@ export async function createTemplate(input: unknown) {
 
 export async function updateTemplate(id: string, input: unknown) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const data = parseOrThrow(templateSchema, input);
     await templates.update(id, data);
     revalidatePath("/templates");
@@ -35,7 +35,7 @@ export async function updateTemplate(id: string, input: unknown) {
 
 export async function deleteTemplate(id: string) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     try {
       await templates.remove(id);
     } catch (err) {

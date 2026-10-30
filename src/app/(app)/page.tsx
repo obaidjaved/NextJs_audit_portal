@@ -1,12 +1,12 @@
 import { audits as auditsRepo, templates as templatesRepo, customers as customersRepo, requests as requestsRepo } from "@/lib/repo";
 import type { DashboardAudit } from "@/lib/dashboard";
 import { buildAuditRows, matchesView } from "@/lib/audit-rows";
-import Link from "next/link";
 import { ConsoleCards } from "@/components/dashboard/ConsoleCards";
+import { NextSteps, type NextStep } from "@/components/dashboard/NextSteps";
 import { QuickAccessAccordion } from "@/components/dashboard/QuickAccessAccordion";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { requireUser } from "@/lib/access";
-import { dateOnlyStringUTC } from "@/lib/schedule";
+import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 
 export default async function ConsolePage() {
   const user = await requireUser();
@@ -54,13 +54,29 @@ export default async function ConsolePage() {
   }));
 
   // The five numbers. They count the same lines as the Audits tab, so each card matches the list it opens.
-  const todayKey = dateOnlyStringUTC(new Date());
+  const todayKey = todayInBusinessZone();
   const lines = buildAuditRows(auditRows, customerRows);
   const countView = (view: "completed" | "unassigned" | "upcoming" | "due" | "today") =>
     auditList && customerList ? lines.filter((r) => matchesView(r, view, todayKey)).length : null;
   // What an auditor needs to act on: reports the admin sent back, and completed audits waiting to be submitted.
   const sentBack = isAdmin ? 0 : lines.filter((r) => r.review === "Needs Correction").length;
   const toSubmit = isAdmin ? 0 : lines.filter((r) => r.review === "Ready to submit").length;
+
+  // The to-do list: only what needs attention right now.
+  const waitingForReview = lines.filter((r) => r.review === "Pending approval").length;
+  const notStarted = isAdmin ? 0 : lines.filter((r) => r.review === null).length;
+  const steps: NextStep[] = isAdmin
+    ? [
+        { count: leadList ? leadList.filter((l) => l.status === "PENDING").length : 0, text: "new leads waiting for a decision", action: "Review leads", href: "/leads", urgent: true },
+        { count: countView("unassigned") ?? 0, text: "customers waiting for an auditor", action: "Assign auditors", href: "/audits?view=unassigned" },
+        { count: waitingForReview, text: "submitted reports waiting for your review", action: "Review reports", href: "/audits?status=Pending%20approval", urgent: true },
+      ]
+    : [
+        { count: sentBack, text: sentBack === 1 ? "report was sent back for corrections" : "reports were sent back for corrections", action: "See instructions", href: "/audits?status=Needs%20Correction", urgent: true },
+        { count: toSubmit, text: toSubmit === 1 ? "completed audit is ready to submit" : "completed audits are ready to submit", action: "Submit", href: "/audits?status=Ready%20to%20submit" },
+        { count: countView("today") ?? 0, text: "audits are due today", action: "Open audits", href: "/audits?view=today", urgent: true },
+        { count: notStarted, text: notStarted === 1 ? "assigned job hasn't been started" : "assigned jobs haven't been started", action: "Start an audit", href: "/audits?status=No%20audit%20yet" },
+      ];
 
   // Auditors have no Leads or Customers tabs, so they get just their own audit numbers.
   const cards = isAdmin
@@ -91,16 +107,7 @@ export default async function ConsolePage() {
         </p>
       )}
 
-      {sentBack > 0 && (
-        <Link href="/audits?view=due" role="alert" className="card-soft" style={{ padding: 14, borderLeft: "3px solid var(--danger)", textDecoration: "none", color: "inherit", fontSize: 13.5 }}>
-          <strong>{sentBack === 1 ? "1 report was" : `${sentBack} reports were`} sent back for corrections.</strong> Open Audits to see the admin&apos;s instructions.
-        </Link>
-      )}
-      {toSubmit > 0 && (
-        <Link href="/audits?view=due" className="card-soft" style={{ padding: 14, textDecoration: "none", color: "inherit", fontSize: 13.5 }}>
-          <strong>{toSubmit === 1 ? "1 completed audit is" : `${toSubmit} completed audits are`} ready to submit</strong> to the admin.
-        </Link>
-      )}
+      <NextSteps steps={steps} />
 
       <ConsoleCards cards={cards} />
 

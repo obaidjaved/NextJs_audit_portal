@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { customers, RepoError } from "@/lib/repo";
 import { customerSchema } from "@/lib/validation/customer";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -9,7 +9,7 @@ import { attempt } from "./result";
 
 export async function createCustomer(input: unknown) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const data = parseOrThrow(customerSchema, input);
     const customer = await customers.create(data);
     revalidatePath("/customers");
@@ -19,7 +19,7 @@ export async function createCustomer(input: unknown) {
 
 export async function updateCustomer(id: string, input: unknown) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const data = parseOrThrow(customerSchema, input);
     await customers.update(id, data);
     revalidatePath("/customers");
@@ -29,7 +29,7 @@ export async function updateCustomer(id: string, input: unknown) {
 
 export async function deleteCustomer(id: string) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     try {
       await customers.remove(id);
     } catch (err) {

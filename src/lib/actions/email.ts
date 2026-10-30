@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireStaff } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { audits, customers, emailTemplates, mail, RepoError } from "@/lib/repo";
 import { buildAuditPdf } from "@/lib/audit-pdf";
 import { applyMerge, mergeValuesFor } from "@/lib/email-merge";
@@ -21,7 +21,7 @@ const sendSchema = z.object({
 // Sends an email about an audit to its customer; optionally attaches the report as a PDF.
 export async function sendAuditEmail(auditId: string, input: unknown): Promise<ActionResult> {
   return attempt(async () => {
-    const user = await requireStaff();
+    const user = await requireAdmin();
     const data = parseOrThrow(sendSchema, input);
     const audit = await audits.get(auditId);
     if (!audit) throw new Error("This audit no longer exists.");

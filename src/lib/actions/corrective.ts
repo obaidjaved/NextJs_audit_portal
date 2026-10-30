@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { actions as actionsRepo, audits } from "@/lib/repo";
 import { correctiveActionSchema } from "@/lib/validation/corrective";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -16,7 +16,7 @@ function refresh(auditId?: string | null) {
 
 export async function createCorrectiveAction(input: unknown) {
   return attempt(async () => {
-    const user = await requireStaff();
+    const user = await requireAdmin();
     const data = parseOrThrow(correctiveActionSchema, input);
     if (data.auditId) {
       const audit = await audits.get(data.auditId);
@@ -32,7 +32,7 @@ export async function createCorrectiveAction(input: unknown) {
 
 export async function setActionStatus(id: string, status: "OPEN" | "IN_PROGRESS" | "RESOLVED") {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     if (!["OPEN", "IN_PROGRESS", "RESOLVED"].includes(status)) throw new Error("Invalid status.");
     const action = await actionsRepo.patch(id, { status });
     if (action.auditId) await logEvent(action.auditId, undefined, `Action "${action.title}" marked ${status.replace("_", " ").toLowerCase()}`);
@@ -42,7 +42,7 @@ export async function setActionStatus(id: string, status: "OPEN" | "IN_PROGRESS"
 
 export async function assignAction(id: string, assigneeId: string | null) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     const action = await actionsRepo.patch(id, { assigneeId });
     refresh(action.auditId);
   });
@@ -50,7 +50,7 @@ export async function assignAction(id: string, assigneeId: string | null) {
 
 export async function deleteCorrectiveAction(id: string) {
   return attempt(async () => {
-    await requireStaff();
+    await requireAdmin();
     await actionsRepo.remove(id);
     refresh();
   });

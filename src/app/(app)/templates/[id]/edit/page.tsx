@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { templates } from "@/lib/repo";
+import { requireAdminPage } from "@/lib/access";
 import { TemplateBuilder, type TemplateFormState } from "@/components/template-builder/TemplateBuilder";
 import type { TemplateField } from "@/lib/field-types";
 
 export default async function EditTemplatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await requireAdminPage();
   const template = await templates.get(id);
   if (!template) notFound();
 
