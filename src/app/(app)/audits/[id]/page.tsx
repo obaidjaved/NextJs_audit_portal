@@ -64,6 +64,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
             canApprove={user.role === "ADMIN"}
             title={`${audit.customer.name} — ${audit.docNumber}`}
             isAdmin={user.role === "ADMIN"}
+            reportSent={audit.reportSent}
             readyToSubmit={audit.readyToSubmit}
             canEdit={canEditAudit(user, audit)}
             needsCorrection={audit.needsCorrection}

@@ -137,7 +137,7 @@ export function AuditsTable({
       status: !r.review ? (
         <span className="pill pending" style={{ textTransform: "none", letterSpacing: 0 }}>No audit yet</span>
       ) : isAdmin ? (
-        <ReviewSelect auditId={r.auditId as string} value={r.review} title={`${r.company}${r.code ? ` — ${r.code}` : ""}`} />
+        <ReviewSelect auditId={r.auditId as string} value={r.review} reportSent={r.reportSent} title={`${r.company}${r.code ? ` — ${r.code}` : ""}`} />
       ) : (
         <span className={`pill ${REVIEW_PILL[r.review]}`} style={{ textTransform: "none", letterSpacing: 0 }}>{r.review}</span>
       ),

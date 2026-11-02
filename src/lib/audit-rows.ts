@@ -22,6 +22,7 @@ export interface AuditRow {
   review: ReviewStatus | null; // null = no audit yet
   submitted: boolean; // a report exists to view
   editable: boolean; // the auditor can still edit it: in progress, completed but not submitted, or sent back
+  reportSent: boolean; // already emailed or shared with the customer
   canSubmit: boolean; // completed, waiting for the auditor to submit it to the admin
   correctionNote: string; // the admin's instructions while it is sent back
   approved: boolean; // the report can be sent to the customer
@@ -84,6 +85,7 @@ export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow
       submitted: !a.draft || a.needsCorrection,
       editable: a.draft || a.readyToSubmit,
       canSubmit: a.readyToSubmit,
+      reportSent: a.reportSent ?? false,
       correctionNote: a.needsCorrection ? a.correctionNote ?? "" : "",
       approved: isApproved(a),
       customerCompleted: c?.progressStatus === "Completed",
@@ -114,6 +116,7 @@ export function buildAuditRows(audits: Audit[], customers: Customer[]): AuditRow
       submitted: false,
       editable: false,
       canSubmit: false,
+      reportSent: false,
       correctionNote: "",
       approved: false,
       customerCompleted: false,

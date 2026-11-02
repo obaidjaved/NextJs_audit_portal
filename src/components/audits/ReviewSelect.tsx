@@ -4,12 +4,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { unwrap } from "@/lib/actions/result";
 import { setAuditReview } from "@/lib/actions/audits";
-import { CorrectionDialog } from "./CorrectionDialog";
+import { NeedsCorrectionFlow } from "./NeedsCorrectionFlow";
 
 const OPTIONS = ["Approved", "Needs Correction"];
 
 // The admin's Approved / Needs Correction dropdown. "Needs Correction" asks for instructions first.
-export function ReviewSelect({ auditId, value, title }: { auditId: string; value: string; title: string }) {
+export function ReviewSelect({ auditId, value, title, reportSent = false }: { auditId: string; value: string; title: string; reportSent?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function ReviewSelect({ auditId, value, title }: { auditId: string; value
           {error}
         </div>
       )}
-      {correcting && <CorrectionDialog auditId={auditId} title={title} onClose={() => setCorrecting(false)} />}
+      {correcting && <NeedsCorrectionFlow auditId={auditId} title={title} reportSent={reportSent} onClose={() => setCorrecting(false)} />}
     </div>
   );
 }

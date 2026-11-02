@@ -50,6 +50,9 @@ export async function sendAuditEmail(auditId: string, input: unknown): Promise<A
       throw err;
     }
     await logEvent(auditId, user.id, `Email sent to ${data.to}${attachments.length ? " with the report attached" : ""}`);
+    // Remember the customer now has the report, so sending it back for corrections later can warn the admin.
+    if (attachments.length) await audits.update(auditId, { reportSent: true }).catch(() => undefined);
+    revalidatePath("/audits");
     revalidatePath(`/audits/${auditId}`);
   });
 }

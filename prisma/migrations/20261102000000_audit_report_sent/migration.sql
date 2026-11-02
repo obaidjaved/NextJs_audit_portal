@@ -1,0 +1,1 @@
+ALTER TABLE "Audit" ADD COLUMN "reportSent" BOOLEAN NOT NULL DEFAULT false;

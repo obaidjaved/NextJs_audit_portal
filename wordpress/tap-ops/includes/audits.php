@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const TAP_OPS_AUDIT_LIST_COLS = 'a.id, a.doc_number, a.template_id, a.customer_id, a.inspector_id, a.title, a.score, a.critical_fail, a.draft, a.pending_approval, a.needs_correction, a.ready_to_submit, a.correction_note, a.audit_date, a.share_token, a.created_at, a.updated_at';
+const TAP_OPS_AUDIT_LIST_COLS = 'a.id, a.doc_number, a.template_id, a.customer_id, a.inspector_id, a.title, a.score, a.critical_fail, a.draft, a.pending_approval, a.needs_correction, a.ready_to_submit, a.correction_note, a.report_sent, a.audit_date, a.share_token, a.created_at, a.updated_at';
 
 /**
  * Turn audit rows into API objects.
@@ -64,6 +64,7 @@ function tap_ops_audits_out( array $rows, $mode = 'full' ) {
 			'pendingApproval' => (bool) (int) $r['pending_approval'],
 			'needsCorrection' => ! empty( $r['needs_correction'] ),
 			'readyToSubmit'   => ! empty( $r['ready_to_submit'] ),
+			'reportSent'      => ! empty( $r['report_sent'] ),
 			'correctionNote'  => isset( $r['correction_note'] ) ? (string) $r['correction_note'] : '',
 			'date'            => tap_ops_iso( $r['audit_date'] ),
 		);
@@ -127,6 +128,7 @@ function tap_ops_audit_input( array $b ) {
 		'pendingApproval' => 'pending_approval',
 		'needsCorrection' => 'needs_correction',
 		'readyToSubmit'   => 'ready_to_submit',
+		'reportSent'      => 'report_sent',
 	);
 	foreach ( $flags as $key => $col ) {
 		if ( array_key_exists( $key, $b ) ) {

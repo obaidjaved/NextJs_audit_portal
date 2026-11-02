@@ -102,6 +102,7 @@ export interface Audit {
   needsCorrection: boolean;
   readyToSubmit: boolean;
   correctionNote: string;
+  reportSent: boolean;
   date: Date;
   responses: unknown;
   notes: string;
@@ -127,6 +128,7 @@ export interface AuditWriteInput {
   needsCorrection?: boolean;
   readyToSubmit?: boolean;
   correctionNote?: string;
+  reportSent?: boolean;
   date?: string;
   responses: unknown;
   notes: string;

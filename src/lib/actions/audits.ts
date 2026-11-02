@@ -195,6 +195,7 @@ export async function setAuditSharing(id: string, enabled: boolean) {
       throw new Error("Only submitted, approved audits can be shared.");
     }
     const { shareToken } = await audits.setShare(id, enabled);
+    if (enabled) await audits.update(id, { reportSent: true }).catch(() => undefined);
     await logEvent(id, user.id, enabled ? "Public report link created" : "Public report link revoked");
     revalidatePath(`/audits/${id}`);
     return { shareToken };
@@ -248,7 +249,7 @@ export async function setAuditReview(id: string, status: "Approved" | "Needs Cor
       if (!instructions) throw new Error("Please tell the auditor what needs to be corrected.");
       if (instructions.length > MAX_CORRECTION_NOTE) throw new Error(`Please keep the instructions under ${MAX_CORRECTION_NOTE} characters.`);
       // Back to the auditor as a draft; they fix it and submit it again.
-      await audits.update(id, { draft: true, pendingApproval: false, readyToSubmit: false, needsCorrection: true, correctionNote: instructions });
+      await audits.update(id, { draft: true, pendingApproval: false, readyToSubmit: false, needsCorrection: true, correctionNote: instructions, reportSent: false });
       await logEvent(id, admin.id, CORRECTION_PREFIX + instructions);
       await notifyAuditor(audit, instructions);
     }

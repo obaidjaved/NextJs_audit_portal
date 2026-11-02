@@ -73,6 +73,7 @@ function tap_ops_install_schema() {
   needs_correction tinyint(1) NOT NULL DEFAULT 0,
   ready_to_submit tinyint(1) NOT NULL DEFAULT 0,
   correction_note text,
+  report_sent tinyint(1) NOT NULL DEFAULT 0,
   audit_date datetime NOT NULL,
   responses longtext,
   notes longtext,

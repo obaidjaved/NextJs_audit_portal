@@ -5,7 +5,7 @@ import { unwrap } from "@/lib/actions/result";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { approveAudit, duplicateAudit } from "@/lib/actions/audits";
-import { CorrectionDialog } from "./CorrectionDialog";
+import { NeedsCorrectionFlow } from "./NeedsCorrectionFlow";
 import { SubmitReportButton } from "./SubmitReportButton";
 
 export function AuditActionsBar({
@@ -15,6 +15,7 @@ export function AuditActionsBar({
   canApprove,
   title = "",
   isAdmin = true,
+  reportSent = false,
   readyToSubmit = false,
   canEdit = true,
   needsCorrection = false,
@@ -25,6 +26,7 @@ export function AuditActionsBar({
   canApprove: boolean;
   title?: string;
   isAdmin?: boolean;
+  reportSent?: boolean;
   readyToSubmit?: boolean;
   canEdit?: boolean;
   needsCorrection?: boolean;
@@ -110,7 +112,7 @@ export function AuditActionsBar({
         )}
       </div>
       {error && <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{error}</p>}
-      {correcting && <CorrectionDialog auditId={auditId} title={title} onClose={() => setCorrecting(false)} />}
+      {correcting && <NeedsCorrectionFlow auditId={auditId} title={title} reportSent={reportSent} onClose={() => setCorrecting(false)} />}
     </div>
   );
 }
