@@ -49,6 +49,17 @@ const place = (c?: { site: string | null; city: string | null; state: string | n
   [c?.site, [c?.city, c?.state].filter(Boolean).join(", ")].filter(Boolean).join(", ");
 const clientOf = (contact: string | null | undefined) => contact?.split(",")[0]?.trim() ?? "";
 
+// A customer still needs an audit unless their latest audit is completed and approved by the admin
+// (and they haven't been given a fresh assignment since, which starts a new round of work).
+export function needsAudit(c: Customer, audits: Audit[]): boolean {
+  if (c.progressStatus === "Completed") return false;
+  const theirs = audits.filter((a) => a.customerId === c.id);
+  if (theirs.length === 0) return true;
+  const latest = theirs.reduce((x, y) => (x.createdAt >= y.createdAt ? x : y));
+  if (!isApproved(latest)) return true;
+  return !!c.assignedAt && c.assignedAt > latest.createdAt;
+}
+
 // What one auditor sees: the customers assigned to them, and the audits on those (or that they started themselves).
 export function buildAuditorRows(audits: Audit[], customers: Customer[], userId: string): AuditRow[] {
   const mine = customers.filter((c) => c.assignedAuditorId === userId);

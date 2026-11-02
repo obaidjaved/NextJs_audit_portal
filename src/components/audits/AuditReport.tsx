@@ -35,7 +35,11 @@ export interface ReportAudit {
 export function AuditReport({ audit, headerSlot }: { audit: ReportAudit; headerSlot?: ReactNode }) {
   // The review stages that come before and around the score-based statuses.
   const status = audit.needsCorrection && audit.draft ? "Needs Correction" : audit.readyToSubmit ? "Ready to submit" : auditStatus(audit);
-  const responses = Array.isArray(audit.responses) ? (audit.responses as ResponseObject[]) : [];
+  const allResponses = Array.isArray(audit.responses) ? (audit.responses as ResponseObject[]) : [];
+  // The signature is shown once, at the end of the report, so it is left out of the list of findings.
+  const responses = allResponses.filter((r) => r.type !== "signature");
+  const signatureResponse = allResponses.find((r) => r.type === "signature" && r.value);
+  const signature = audit.signature || (signatureResponse && signatureResponse.type === "signature" ? signatureResponse.value : null);
   const photos = Array.isArray(audit.photos) ? (audit.photos as { id: string; src: string }[]) : [];
 
   return (
@@ -84,11 +88,11 @@ export function AuditReport({ audit, headerSlot }: { audit: ReportAudit; headerS
         </div>
       )}
 
-      {audit.signature && (
+      {signature && (
         <div>
           <div style={{ ...LABEL_STYLE, marginBottom: 8 }}>Inspector Signature</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={audit.signature} alt="" style={{ maxWidth: 220, background: "#fff", borderRadius: 10, border: "1px solid var(--rule)" }} />
+          <img src={signature} alt="" style={{ maxWidth: 220, background: "#fff", borderRadius: 10, border: "1px solid var(--rule)" }} />
         </div>
       )}
     </div>

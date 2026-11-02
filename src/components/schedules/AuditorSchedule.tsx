@@ -1,8 +1,27 @@
 import { fmtDate } from "@/components/ops/Parts";
 import type { AuditRow } from "@/lib/audit-rows";
 
+const DAY = 86_400_000;
+const dayNumber = (key: string) => Math.round(Date.UTC(+key.slice(0, 4), +key.slice(5, 7) - 1, +key.slice(8, 10)) / DAY);
+const plural = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
+
+// The date the service is needed, with how long is left (in brackets) or how late it is (in red).
+function NeededBy({ date, todayKey }: { date: string | null; todayKey: string }) {
+  if (!date) return <>—</>;
+  const left = dayNumber(date.slice(0, 10)) - dayNumber(todayKey);
+  const overdue = left < 0;
+  return (
+    <div style={overdue ? { color: "var(--danger)", fontWeight: 600 } : undefined}>
+      {fmtDate(date)}
+      <div style={{ fontSize: 12, fontWeight: overdue ? 700 : 400, color: overdue ? "var(--danger)" : "var(--ink-2)" }}>
+        {overdue ? `${plural(-left)} overdue` : left === 0 ? "(due today)" : `(${plural(left)} left)`}
+      </div>
+    </div>
+  );
+}
+
 // The auditor's Schedules page: the jobs assigned to them that are still open, soonest first.
-export function AuditorSchedule({ rows }: { rows: AuditRow[] }) {
+export function AuditorSchedule({ rows, todayKey }: { rows: AuditRow[]; todayKey: string }) {
   if (rows.length === 0) {
     return (
       <div className="card-soft" style={{ padding: 22, color: "var(--ink-2)", fontSize: 13.5 }}>
@@ -42,7 +61,9 @@ export function AuditorSchedule({ rows }: { rows: AuditRow[] }) {
               <tr key={r.key}>
                 <td>{name(r)}</td>
                 <td>{fmtDate(r.assignedAt)}</td>
-                <td>{fmtDate(r.neededBy)}</td>
+                <td>
+                  <NeededBy date={r.neededBy} todayKey={todayKey} />
+                </td>
                 <td>{r.address || "—"}</td>
               </tr>
             ))}
@@ -61,7 +82,7 @@ export function AuditorSchedule({ rows }: { rows: AuditRow[] }) {
               </div>
               <div>
                 <div className="dt-field-label">Service needed</div>
-                {fmtDate(r.neededBy)}
+                <NeededBy date={r.neededBy} todayKey={todayKey} />
               </div>
               <div className="dt-wide">
                 <div className="dt-field-label">Address</div>

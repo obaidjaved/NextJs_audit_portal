@@ -3,6 +3,7 @@ import { schedules as schedulesRepo, audits as auditsRepo, customers as customer
 import { requireUser } from "@/lib/access";
 import { buildAuditorRows } from "@/lib/audit-rows";
 import { AuditorSchedule } from "@/components/schedules/AuditorSchedule";
+import { todayKey } from "@/lib/schedule";
 import { SchedulesView } from "@/components/schedules/SchedulesView";
 
 export default async function SchedulesPage() {
@@ -17,7 +18,7 @@ export default async function SchedulesPage() {
     return (
       <div>
         <h1 className="disp" style={{ fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Schedules</h1>
-        <AuditorSchedule rows={rows} />
+        <AuditorSchedule rows={rows} todayKey={todayKey()} />
       </div>
     );
   }

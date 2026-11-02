@@ -1,4 +1,5 @@
-import { templates as templatesRepo, customers as customersRepo } from "@/lib/repo";
+import { templates as templatesRepo, customers as customersRepo, audits as auditsRepo } from "@/lib/repo";
+import { needsAudit } from "@/lib/audit-rows";
 import { requireUser } from "@/lib/access";
 import { NewAuditPicker } from "@/components/audit-form/NewAuditPicker";
 
@@ -10,10 +11,16 @@ export default async function NewAuditPage({
   const { customerId, templateId } = await searchParams;
   const user = await requireUser();
 
-  const [customerRows, templateRows] = await Promise.all([customersRepo.list(), templatesRepo.list()]);
+  const isAdmin = user.role === "ADMIN";
+  const [customerRows, templateRows, auditRows] = await Promise.all([
+    customersRepo.list(),
+    templatesRepo.list(),
+    // Only auditors need the audit history (to hide customers whose audit is already done).
+    isAdmin ? Promise.resolve([]) : auditsRepo.list({ noResponses: true }),
+  ]);
   // Auditors only see the customers the administrator assigned to them.
   const customers = customerRows
-    .filter((c) => user.role === "ADMIN" || c.assignedAuditorId === user.id)
+    .filter((c) => isAdmin || (c.assignedAuditorId === user.id && needsAudit(c, auditRows)))
     .map((c) => ({ id: c.id, name: c.name, site: c.site }));
   const templates = templateRows.map((t) => ({ id: t.id, name: t.name, category: t.category }));
 
