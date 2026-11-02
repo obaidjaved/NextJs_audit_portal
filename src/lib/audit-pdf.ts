@@ -3,6 +3,7 @@ import path from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import type { Audit } from "@/lib/repo-types";
 import { auditStatus, type ResponseObject } from "@/lib/scoring";
+import { findingResponses } from "@/lib/report-fields";
 
 // Builds the audit report as a PDF (A4) from the saved audit: header, result,
 // every finding, notes, photos and the signature. Used by the "PDF" icon on the
@@ -174,7 +175,9 @@ export async function buildAuditPdf(audit: Audit): Promise<Uint8Array> {
   const w = new Writer(doc, font, bold);
   const accent = hexColor(audit.template.reportAccentColor, [1, 0.478, 0.102]);
   const status = auditStatus(audit);
-  const responses = (Array.isArray(audit.responses) ? audit.responses : []) as ResponseObject[];
+  const allResponses = (Array.isArray(audit.responses) ? audit.responses : []) as ResponseObject[];
+  // Inspector, date and location are already in the header, and the signature is shown at the end.
+  const responses = findingResponses(allResponses, audit.template);
   const when = audit.date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
   // Header band
@@ -195,7 +198,6 @@ export async function buildAuditPdf(audit: Audit): Promise<Uint8Array> {
   w.text("Findings", { size: 13, bold: true, gap: 4 });
   if (responses.length === 0) w.text("No responses were recorded.", { color: MUTED });
   for (const r of responses) {
-    if (r.type === "signature") continue; // shown at the end
     w.ensure(36);
     w.text(r.label, { bold: true, size: 10.5 });
     const value = describe(r);
@@ -234,7 +236,7 @@ export async function buildAuditPdf(audit: Audit): Promise<Uint8Array> {
   }
 
   // Signature (the audit's own, or a Signature field in the template)
-  const sigField = responses.find((r) => r.type === "signature" && r.value);
+  const sigField = allResponses.find((r) => r.type === "signature" && r.value);
   const signature = audit.signature || (sigField && sigField.type === "signature" ? sigField.value : null);
   if (signature) {
     const loaded = await loadImageBytes(signature);

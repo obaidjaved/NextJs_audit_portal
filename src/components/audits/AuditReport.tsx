@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { auditStatus, type ResponseObject } from "@/lib/scoring";
+import { findingResponses } from "@/lib/report-fields";
 import { FindingsList } from "./FindingsList";
 
 export const STATUS_PILL_CLASS: Record<string, string> = {
@@ -26,6 +27,7 @@ export interface ReportAudit {
   criticalFail: boolean;
   notes: string;
   responses: unknown;
+  template?: { fields?: unknown };
   photos: unknown;
   signature: string | null;
   customer: { name: string; site: string | null };
@@ -36,8 +38,8 @@ export function AuditReport({ audit, headerSlot }: { audit: ReportAudit; headerS
   // The review stages that come before and around the score-based statuses.
   const status = audit.needsCorrection && audit.draft ? "Needs Correction" : audit.readyToSubmit ? "Ready to submit" : auditStatus(audit);
   const allResponses = Array.isArray(audit.responses) ? (audit.responses as ResponseObject[]) : [];
-  // The signature is shown once, at the end of the report, so it is left out of the list of findings.
-  const responses = allResponses.filter((r) => r.type !== "signature");
+  // The signature is shown once, at the end, and the inspector, date and location are in the header, so none of them repeat in the findings.
+  const responses = findingResponses(allResponses, audit.template);
   const signatureResponse = allResponses.find((r) => r.type === "signature" && r.value);
   const signature = audit.signature || (signatureResponse && signatureResponse.type === "signature" ? signatureResponse.value : null);
   const photos = Array.isArray(audit.photos) ? (audit.photos as { id: string; src: string }[]) : [];
