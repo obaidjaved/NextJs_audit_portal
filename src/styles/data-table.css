@@ -460,6 +460,29 @@ a.dt-icon-btn:hover {
   }
 }
 
+/* Loading placeholder shown while a tab's data arrives. */
+.page-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sk {
+  border-radius: 14px;
+  background: var(--rule);
+  animation: sk-pulse 1.2s ease-in-out infinite;
+}
+.sk-title { height: 28px; width: 220px; }
+.sk-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.sk-card { height: 96px; }
+.sk-block { height: 280px; }
+@keyframes sk-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; }
+}
+
 /* Console: five simple count cards. */
 .console-cards {
   display: grid;

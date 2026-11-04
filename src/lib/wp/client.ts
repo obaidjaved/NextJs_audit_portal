@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { RepoError } from "@/lib/repo-types";
 
 // Server-side only: WP_API_KEY is not a NEXT_PUBLIC_ variable, so it never reaches the browser.
@@ -7,6 +8,28 @@ function config() {
   const key = process.env.WP_API_KEY;
   if (!base || !key) throw new Error("WordPress backend is not configured (set WP_API_URL and WP_API_KEY).");
   return { base, key };
+}
+
+// Every page asks WordPress for several lists, and each round trip to the host costs a second or more. The lists are kept for a
+// few seconds and shared by all pages, so moving between tabs doesn't repeat the same calls. Any change made through the portal
+// clears them straight away (see invalidate below), so people see their own changes immediately.
+const READ_CACHE_SECONDS = 15;
+const CACHE_TAG = "wp";
+const CACHEABLE_LISTS = new RegExp("^/(audits|customers|templates|requests|users|actions|schedules|email-templates)(/pending-count)?$");
+
+// Only the small list endpoints. A single audit (photos, signatures) can be large, and the audit list is only kept when it leaves out the answers.
+function cacheable(path: string, query: WpRequest["query"]): boolean {
+  if (!CACHEABLE_LISTS.test(path)) return false;
+  if (path === "/audits" && !query?.noResponses) return false;
+  return true;
+}
+
+function invalidate() {
+  try {
+    revalidateTag(CACHE_TAG, { expire: 0 });
+  } catch {
+    // Not in a context that can invalidate (for example while rendering a page); the short lifetime covers it.
+  }
 }
 
 export interface WpRequest {
@@ -50,13 +73,16 @@ async function wpOnce<T>(path: string, req: WpRequest): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), req.timeoutMs ?? 8000);
 
+  const method = req.method ?? "GET";
+  const keep = method === "GET" && cacheable(path, req.query);
+
   let res: Response;
   try {
     res = await fetch(url, {
-      method: req.method ?? "GET",
+      method,
       headers,
       body: req.body !== undefined ? JSON.stringify(req.body) : undefined,
-      cache: "no-store",
+      ...(keep ? { next: { revalidate: READ_CACHE_SECONDS, tags: [CACHE_TAG] } } : { cache: "no-store" as const }),
       signal: controller.signal,
     });
   } catch (err) {
@@ -78,5 +104,6 @@ async function wpOnce<T>(path: string, req: WpRequest): Promise<T> {
     const err = (data ?? {}) as { code?: string; message?: string };
     throw new RepoError(res.status, err.code ?? "error", err.message ?? `WordPress returned ${res.status}`);
   }
+  if (method !== "GET") invalidate();
   return data as T;
 }
