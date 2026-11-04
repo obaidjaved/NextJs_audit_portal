@@ -202,6 +202,26 @@ function tap_ops_install_schema() {
 		$wpdb->query( "UPDATE $cu c INNER JOIN $rq r ON r.customer_id = c.id SET c.services = r.services, c.service_date = r.date_needed" ); // phpcs:ignore
 	}
 
+	// v8: reports that were already emailed or shared with the customer (and not sent back since) get the "already sent" flag.
+	if ( (int) $previous_version < 8 ) {
+		$au = tap_ops_t( 'audits' );
+		$ev = tap_ops_t( 'events' );
+		$wpdb->query( // phpcs:ignore
+			"UPDATE $au a SET a.report_sent = 1
+			WHERE a.report_sent = 0 AND a.draft = 0 AND a.pending_approval = 0 AND a.ready_to_submit = 0
+			AND EXISTS (
+				SELECT 1 FROM $ev e
+				WHERE e.audit_id = a.id
+				AND ( e.message LIKE 'Email sent to % with the report attached' OR e.message = 'Public report link created' )
+				AND NOT EXISTS (
+					SELECT 1 FROM $ev c
+					WHERE c.audit_id = a.id AND c.created_at > e.created_at
+					AND ( c.message LIKE 'Correction requested:%' OR c.message = 'Sent back for correction' )
+				)
+			)"
+		);
+	}
+
 	update_option( 'tap_ops_db_version', TAP_OPS_DB_VERSION );
 }
 

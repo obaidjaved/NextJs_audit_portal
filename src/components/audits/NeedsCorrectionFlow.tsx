@@ -11,7 +11,7 @@ export function NeedsCorrectionFlow({ auditId, title, reportSent, onClose }: { a
   if (confirmed) return <CorrectionDialog auditId={auditId} title={title} onClose={onClose} />;
 
   return (
-    <DetailsDialog title="This report was already sent to the client" subtitle={title} onClose={onClose}>
+    <DetailsDialog title="This report was already sent to the client. Still want to continue?" subtitle={title} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
           The client already has this report. If you send it back for corrections, they are holding a version that may change, and you will need to send the

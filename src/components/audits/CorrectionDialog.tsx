@@ -32,7 +32,7 @@ export function CorrectionDialog({ auditId, title, onClose }: { auditId: string;
   }
 
   return (
-    <DetailsDialog title="Needs corrections" subtitle={title} onClose={onClose}>
+    <DetailsDialog title="Send this report back to the auditor for corrections" subtitle={title} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <label htmlFor="correction-note" style={{ fontSize: 13, fontWeight: 600 }}>
           Where is the correction required?

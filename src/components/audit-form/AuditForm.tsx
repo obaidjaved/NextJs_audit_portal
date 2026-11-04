@@ -83,6 +83,9 @@ export function AuditForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [photos, setPhotos] = useState<AuditPhoto[]>(initial?.photos ?? []);
   const [signature, setSignature] = useState<string | null>(initial?.signature ?? null);
+  // Decided once, when the form opens, so a box does not vanish while someone is clearing it.
+  const [hadPhotos] = useState(() => (initial?.photos?.length ?? 0) > 0);
+  const [hadNotes] = useState(() => (initial?.notes ?? "").trim() !== "");
 
   // Restore a locally-saved draft after hydration (client-only: localStorage
   // isn't available during SSR, so this can't run in the useState initializer
@@ -243,6 +246,8 @@ export function AuditForm({
         ))}
       </div>
 
+      {/* The template's own fields are the whole form. These two extra boxes only show for older audits that already have photos or notes, so that content stays editable. */}
+      {hadPhotos && (
       <div className="card" style={{ padding: 20, marginBottom: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Photo Evidence</h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
@@ -275,11 +280,14 @@ export function AuditForm({
           {uploading ? "Uploading…" : "+ Add photo"}
         </button>
       </div>
+      )}
 
+      {hadNotes && (
       <div className="card" style={{ padding: 20, marginBottom: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Notes</h3>
         <textarea className="textarea" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
+      )}
 
       {!signatureField && (
         <div className="card" style={{ padding: 20 }}>
