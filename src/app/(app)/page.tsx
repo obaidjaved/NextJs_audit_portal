@@ -3,6 +3,8 @@ import type { DashboardAudit } from "@/lib/dashboard";
 import { buildAuditRows, matchesView } from "@/lib/audit-rows";
 import { ConsoleCards } from "@/components/dashboard/ConsoleCards";
 import { NextSteps, type NextStep } from "@/components/dashboard/NextSteps";
+import { RevenueCards } from "@/components/dashboard/RevenueCards";
+import { buildBalanceLines, buildPaymentLines } from "@/lib/revenue";
 import { QuickAccessAccordion } from "@/components/dashboard/QuickAccessAccordion";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { requireUser } from "@/lib/access";
@@ -62,6 +64,9 @@ export default async function ConsolePage() {
   const sentBack = isAdmin ? 0 : lines.filter((r) => r.review === "Needs Correction").length;
   const toSubmit = isAdmin ? 0 : lines.filter((r) => r.review === "Ready to submit").length;
 
+  const payments = isAdmin ? buildPaymentLines(customerRows) : [];
+  const balances = isAdmin ? buildBalanceLines(customerRows, payments) : [];
+
   // The to-do list: only what needs attention right now.
   const waitingForReview = lines.filter((r) => r.review === "Pending approval").length;
   const notStarted = isAdmin ? 0 : lines.filter((r) => r.review === null).length;
@@ -110,6 +115,9 @@ export default async function ConsolePage() {
       <NextSteps steps={steps} />
 
       <ConsoleCards cards={cards} />
+
+      {/* Money figures are for administrators only. */}
+      {isAdmin && customerList && <RevenueCards payments={payments} balances={balances} todayKey={todayKey} />}
 
       <div className="lower-grid">
         <QuickAccessAccordion recentTemplates={recentTemplates} recentCustomers={recentCustomers} showCustomers={isAdmin} categories={categories} />
