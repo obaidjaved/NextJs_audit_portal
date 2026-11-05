@@ -24,5 +24,16 @@ export function latestCorrectionNote(events: { message: string; createdAt: Date 
   return last ? last.message.slice(CORRECTION_PREFIX.length) : null;
 }
 
+// Has the customer been given this report? True if the activity shows it was emailed with the report attached or shared by link,
+// and it hasn't been sent back for correction since.
+export function reportWasSent(events: { message: string; createdAt: Date }[]): boolean {
+  const time = (e: { createdAt: Date }) => e.createdAt.getTime();
+  const sent = events.filter((e) => /^Email sent to .+ with the report attached$/.test(e.message) || e.message === "Public report link created");
+  if (sent.length === 0) return false;
+  const lastSent = Math.max(...sent.map(time));
+  const lastBack = Math.max(0, ...events.filter((e) => e.message.startsWith(CORRECTION_PREFIX) || e.message === "Sent back for correction").map(time));
+  return lastSent > lastBack;
+}
+
 // An approved audit is final: its report can be sent to the customer.
 export const isApproved = (a: Pick<Audit, "draft" | "pendingApproval" | "readyToSubmit">) => !a.draft && !a.pendingApproval && !a.readyToSubmit;

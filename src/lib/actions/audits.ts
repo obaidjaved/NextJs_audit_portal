@@ -8,7 +8,7 @@ import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/sc
 import { nextDocNumber } from "@/lib/doc-number";
 import { requireStaff, requireAdmin } from "@/lib/access";
 import { canAccessAudit, canEditAudit, LOCKED_MESSAGE } from "@/lib/audit-access";
-import { CORRECTION_PREFIX, MAX_CORRECTION_NOTE } from "@/lib/audit-review";
+import { CORRECTION_PREFIX, MAX_CORRECTION_NOTE, reportWasSent } from "@/lib/audit-review";
 import { syncActionsFromAudit, logEvent } from "@/lib/corrective";
 import { emailTeamMember } from "@/lib/notify";
 import { attempt } from "./result";
@@ -199,6 +199,14 @@ export async function setAuditSharing(id: string, enabled: boolean) {
     await logEvent(id, user.id, enabled ? "Public report link created" : "Public report link revoked");
     revalidatePath(`/audits/${id}`);
     return { shareToken };
+  });
+}
+
+// Asked just before an admin sends a report back: has the customer already been given it?
+export async function wasReportSent(id: string) {
+  return attempt(async () => {
+    await requireAdmin();
+    return { sent: reportWasSent(await audits.events(id)) };
   });
 }
 
