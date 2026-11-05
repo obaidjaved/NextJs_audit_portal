@@ -511,7 +511,81 @@ a.dt-icon-btn:hover {
   letter-spacing: 0.02em;
 }
 
+/* Console sections (Revenue, Overview). */
+.console-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.console-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.console-section-title {
+  font: 800 15px/1.2 var(--font-display);
+  color: var(--ink);
+}
+.console-section-sub {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.console-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Smaller count cards under the revenue block. */
+.console-cards.compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.console-cards.compact .console-card {
+  padding: 14px 16px;
+  gap: 6px;
+}
+.console-cards.compact .console-card-label {
+  font-size: 12px;
+}
+.console-cards.compact .console-card-value {
+  font-size: 28px;
+}
+
+/* Revenue: three large cards, each with a coloured edge. */
+.revenue-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+.revenue-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 24px 18px 28px;
+  gap: 4px;
+}
+.revenue-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--rev-accent, var(--accent));
+}
+.revenue-card[data-tone="total"] { --rev-accent: var(--accent); --rev-wash: var(--accent-soft); }
+.revenue-card[data-tone="revenue"] { --rev-accent: var(--ok); --rev-wash: var(--ok-soft); }
+.revenue-card[data-tone="collect"] { --rev-accent: var(--warn); --rev-wash: var(--warn-soft); }
+.revenue-card { background-image: linear-gradient(135deg, transparent 55%, color-mix(in srgb, var(--rev-wash) 60%, transparent)); }
+.revenue-card:hover { transform: none; }
+.revenue-card .console-card-value {
+  font-size: 44px;
+  letter-spacing: -0.02em;
+  margin: 6px 0 2px;
+}
 .revenue-card-top {
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -524,6 +598,8 @@ a.dt-icon-btn:hover {
   padding-top: 3px;
   padding-bottom: 3px;
   font-size: 12px;
+  border-radius: 999px;
+  background-color: var(--card-soft, var(--paper));
 }
 
 .revenue-card-sub {

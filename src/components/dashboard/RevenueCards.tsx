@@ -33,12 +33,13 @@ export function RevenueCards({ payments, balances, todayKey }: { payments: Payme
 
   const card = (
     key: Exclude<Open, null>,
+    tone: "total" | "revenue" | "collect",
     label: string,
     value: number,
     detail: string,
     picker?: { value: Period; options: Period[]; onChange: (p: Period) => void },
   ) => (
-    <div className="console-card card revenue-card">
+    <div className="console-card card revenue-card" data-tone={tone}>
       <div className="revenue-card-top">
         <span className="console-card-label">{label}</span>
         {picker && (
@@ -68,14 +69,14 @@ export function RevenueCards({ payments, balances, todayKey }: { payments: Payme
 
   return (
     <>
-      <div className="console-cards">
-        {card("total", "Total revenue", total, `All time · ${payments.length} payment${payments.length === 1 ? "" : "s"}`)}
-        {card("revenue", "Revenue", sumOf(revenueLines), `${PERIOD_LABEL[revenuePeriod]} · ${revenueLines.length} payment${revenueLines.length === 1 ? "" : "s"}`, {
+      <div className="revenue-cards">
+        {card("total", "total", "Total revenue", total, `All time · ${payments.length} payment${payments.length === 1 ? "" : "s"}`)}
+        {card("revenue", "revenue", "Revenue", sumOf(revenueLines), `${PERIOD_LABEL[revenuePeriod]} · ${revenueLines.length} payment${revenueLines.length === 1 ? "" : "s"}`, {
           value: revenuePeriod,
           options: REVENUE_PERIODS,
           onChange: setRevenuePeriod,
         })}
-        {card("collect", "To be collected", sumBalance(collectLines), `${PERIOD_LABEL[collectPeriod]} · ${collectLines.length} customer${collectLines.length === 1 ? "" : "s"} owe`, {
+        {card("collect", "collect", "To be collected", sumBalance(collectLines), `${PERIOD_LABEL[collectPeriod]} · ${collectLines.length} customer${collectLines.length === 1 ? "" : "s"} owe`, {
           value: collectPeriod,
           options: COLLECT_PERIODS,
           onChange: setCollectPeriod,

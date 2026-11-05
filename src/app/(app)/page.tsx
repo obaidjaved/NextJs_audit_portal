@@ -4,6 +4,7 @@ import { buildAuditRows, matchesView } from "@/lib/audit-rows";
 import { ConsoleCards } from "@/components/dashboard/ConsoleCards";
 import { NextSteps, type NextStep } from "@/components/dashboard/NextSteps";
 import { RevenueCards } from "@/components/dashboard/RevenueCards";
+import { ConsoleSection } from "@/components/dashboard/ConsoleSection";
 import { buildBalanceLines, buildPaymentLines } from "@/lib/revenue";
 import { QuickAccessAccordion } from "@/components/dashboard/QuickAccessAccordion";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
@@ -67,6 +68,9 @@ export default async function ConsolePage() {
   const payments = isAdmin ? buildPaymentLines(customerRows) : [];
   const balances = isAdmin ? buildBalanceLines(customerRows, payments) : [];
 
+  // "Wednesday, November 4" in the business's own time zone.
+  const todayLabel = new Date(`${todayKey}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+
   // The to-do list: only what needs attention right now.
   const waitingForReview = lines.filter((r) => r.review === "Pending approval").length;
   const notStarted = isAdmin ? 0 : lines.filter((r) => r.review === null).length;
@@ -103,7 +107,7 @@ export default async function ConsolePage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
         <h1 className="disp" style={{ fontSize: 24, fontWeight: 800 }}>Welcome back, {firstName}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: 13.5, marginTop: 4 }}>Here is where things stand.</p>
+        <p style={{ color: "var(--ink-2)", fontSize: 13.5, marginTop: 4 }}>{todayLabel} · Here is where things stand.</p>
       </div>
 
       {incomplete && (
@@ -112,15 +116,25 @@ export default async function ConsolePage() {
         </p>
       )}
 
-      <NextSteps steps={steps} />
+      {/* Money figures come first and are for administrators only. */}
+      {isAdmin && customerList && (
+        <ConsoleSection title="Revenue" sub="From the payments recorded on customers">
+          <RevenueCards payments={payments} balances={balances} todayKey={todayKey} />
+        </ConsoleSection>
+      )}
 
-      <ConsoleCards cards={cards} />
+      {/* An auditor's to-do list leads, since they have no revenue to look at. */}
+      {!isAdmin && <NextSteps steps={steps} />}
 
-      {/* Money figures are for administrators only. */}
-      {isAdmin && customerList && <RevenueCards payments={payments} balances={balances} todayKey={todayKey} />}
+      <ConsoleSection title="Overview">
+        <ConsoleCards cards={cards} />
+      </ConsoleSection>
 
       <div className="lower-grid">
-        <QuickAccessAccordion recentTemplates={recentTemplates} recentCustomers={recentCustomers} showCustomers={isAdmin} categories={categories} />
+        <div className="console-stack">
+          {isAdmin && <NextSteps steps={steps} />}
+          <QuickAccessAccordion recentTemplates={recentTemplates} recentCustomers={recentCustomers} showCustomers={isAdmin} categories={categories} />
+        </div>
         <DashboardCalendar audits={audits} />
       </div>
     </div>

@@ -9,7 +9,7 @@ export interface ConsoleCount {
 // Five plain cards: just a name and a number, each one a link to the list behind it.
 export function ConsoleCards({ cards }: { cards: ConsoleCount[] }) {
   return (
-    <div className="console-cards">
+    <div className="console-cards compact">
       {cards.map((c) => (
         <Link key={c.label} href={c.href} className="console-card card">
           <span className="console-card-label">{c.label}</span>
