@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/access";
 import { LoginForm } from "./LoginForm";
+import { LoginHero } from "./LoginHero";
 
 export default async function LoginPage() {
   // The proxy only checks the cookie's signature, so it cannot tell an active
@@ -12,16 +13,26 @@ export default async function LoginPage() {
   if (session?.user?.id) redirect("/");
 
   return (
-    <div className="login-wrap">
-      <div className="login-card card">
-        <div className="login-brand">
-          <span className="disp login-title">TAP Ops Console</span>
-          <span className="login-sub">Sign in to continue</span>
+    <main className="login-page">
+      <LoginHero />
+      <section className="login-panel">
+        <div className="login-card">
+          <div className="login-brand">
+            <span className="login-kicker rise" style={{ ["--d" as string]: "0.15s" }}>
+              TAP Ops Console
+            </span>
+            <h1 className="disp login-title rise" style={{ ["--d" as string]: "0.22s" }}>
+              Welcome back
+            </h1>
+            <p className="login-sub rise" style={{ ["--d" as string]: "0.3s" }}>
+              Sign in to continue to your audits.
+            </p>
+          </div>
+          <Suspense>
+            <LoginForm />
+          </Suspense>
         </div>
-        <Suspense>
-          <LoginForm />
-        </Suspense>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
