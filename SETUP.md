@@ -90,3 +90,10 @@ npm run dev              # or: npm run build && npm start
 | Login always fails | migrations/seed not run against the production database, or wrong `DATABASE_URL` |
 | "Prisma Client could not connect" | Postgres provider requires `sslmode=require` in the connection string, or Vercel's IPs aren't allow-listed (rare with managed providers) |
 | Photos don't persist | no `BLOB_READ_WRITE_TOKEN` set — Vercel's filesystem is ephemeral |
+
+## Security settings worth setting
+
+- `APP_URL` (for example `https://auditportal.tapsvs.com`): the address used for links in emails. Without it, the address of the current request is used.
+- Sign-in is limited to 8 wrong passwords per account and address (40 per address) every 15 minutes. Nothing to configure.
+- WordPress backend: to rotate `TAP_API_KEY`, set `TAP_API_KEY_PREVIOUS` to the old key in `wp-config.php`, change the new key in `wp-config.php` and in this site's `WP_API_KEY`, then remove `TAP_API_KEY_PREVIOUS`.
+- WordPress backend: never define `TAP_ALLOW_DEV_SEED` on a live site.
