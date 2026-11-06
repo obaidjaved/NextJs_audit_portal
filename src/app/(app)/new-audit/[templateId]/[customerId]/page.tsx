@@ -4,6 +4,8 @@ import { templates, customers } from "@/lib/repo";
 import { AuditForm } from "@/components/audit-form/AuditForm";
 import type { TemplateField } from "@/lib/field-types";
 
+export const metadata = { title: "New audit" };
+
 export default async function NewAuditFormPage({
   params,
 }: {

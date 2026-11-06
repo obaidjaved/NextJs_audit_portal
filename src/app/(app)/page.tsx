@@ -11,6 +11,8 @@ import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { requireUser } from "@/lib/access";
 import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 
+export const metadata = { title: "Console" };
+
 export default async function ConsolePage() {
   const user = await requireUser();
   const userName = user.name ?? user.email ?? "there";

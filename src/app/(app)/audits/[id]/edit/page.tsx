@@ -7,6 +7,8 @@ import { AuditForm } from "@/components/audit-form/AuditForm";
 import type { TemplateField } from "@/lib/field-types";
 import type { ResponseObject } from "@/lib/scoring";
 
+export const metadata = { title: "Edit audit" };
+
 export default async function EditAuditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();

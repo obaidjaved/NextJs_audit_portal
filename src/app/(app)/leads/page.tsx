@@ -3,6 +3,8 @@ import { requests as requestsRepo } from "@/lib/repo";
 import { requireAdminPage } from "@/lib/access";
 import { LeadsTable, type LeadRow } from "@/components/leads/LeadsTable";
 
+export const metadata = { title: "Leads" };
+
 export default async function LeadsPage() {
   const user = await requireAdminPage();
   const rows = await requestsRepo.list();

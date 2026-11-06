@@ -5,6 +5,8 @@ import { AUDIT_VIEWS, buildAuditRows, buildAuditorRows, type AuditView } from "@
 import { todayKey } from "@/lib/schedule";
 import { AuditsTable } from "@/components/audits/AuditsTable";
 
+export const metadata = { title: "Audits" };
+
 // The email action runs here: building the PDF and handing it to the mail server can take a while.
 export const maxDuration = 60;
 

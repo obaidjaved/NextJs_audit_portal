@@ -6,6 +6,8 @@ import { AuditorSchedule } from "@/components/schedules/AuditorSchedule";
 import { todayKey } from "@/lib/schedule";
 import { SchedulesView } from "@/components/schedules/SchedulesView";
 
+export const metadata = { title: "Schedules" };
+
 export default async function SchedulesPage() {
   const user = await requireUser();
 

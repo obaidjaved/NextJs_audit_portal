@@ -5,6 +5,8 @@ import { requireAdminPage } from "@/lib/access";
 import { CustomerSplitView } from "@/components/customers/CustomerSplitView";
 import { NewCustomerButton } from "@/components/customers/NewCustomerButton";
 
+export const metadata = { title: "Customers" };
+
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const { view } = await searchParams;
   // Old bookmark: the "New requests" toggle moved to its own Leads tab.

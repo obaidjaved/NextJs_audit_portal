@@ -3,6 +3,8 @@ import { needsAudit } from "@/lib/audit-rows";
 import { requireUser } from "@/lib/access";
 import { NewAuditPicker } from "@/components/audit-form/NewAuditPicker";
 
+export const metadata = { title: "New audit" };
+
 export default async function NewAuditPage({
   searchParams,
 }: {

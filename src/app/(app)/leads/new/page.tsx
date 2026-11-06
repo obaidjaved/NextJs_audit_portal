@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireAdminPage } from "@/lib/access";
 import { LeadForm } from "@/components/leads/LeadForm";
 
+export const metadata = { title: "New lead" };
+
 export default async function NewLeadPage() {
   await requireAdminPage();
   return (

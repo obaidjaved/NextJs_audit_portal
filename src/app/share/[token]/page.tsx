@@ -5,7 +5,7 @@ import { AuditReport } from "@/components/audits/AuditReport";
 import { PrintButton } from "@/components/audits/PrintButton";
 
 // Public, unauthenticated, read-only report. The unguessable token is the only credential.
-export const metadata: Metadata = { title: "Inspection Report", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { absolute: "Inspection Report | TAP Services" }, robots: { index: false, follow: false } };
 
 export default async function SharedReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

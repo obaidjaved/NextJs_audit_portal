@@ -8,8 +8,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function tap_ops_seed_user( $email, $name, $wp_role ) {
-	// The demo password is only for local/staging sites. On a production site the demo users get a random one.
-	$pass = 'production' === wp_get_environment_type() ? wp_generate_password( 24, true, true ) : 'changeme123';
+	// Demo password: TAP_SEED_PASSWORD if defined (the Playground blueprint does), 'changeme123' on a local/staging site,
+	// and a random one on a site that calls itself production, so a forgotten seed never leaves a known password behind.
+	if ( defined( 'TAP_SEED_PASSWORD' ) && is_string( TAP_SEED_PASSWORD ) && '' !== TAP_SEED_PASSWORD ) {
+		$pass = TAP_SEED_PASSWORD;
+	} else {
+		$pass = 'production' === wp_get_environment_type() ? wp_generate_password( 24, true, true ) : 'changeme123';
+	}
 	$existing = get_user_by( 'email', $email );
 	if ( $existing ) {
 		return (int) $existing->ID;

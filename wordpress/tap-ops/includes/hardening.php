@@ -104,3 +104,55 @@ add_action(
 	},
 	0
 );
+
+/**
+ * Cross-origin access. WordPress answers any website's cross-origin request with "Access-Control-Allow-Origin: <that site>"
+ * and credentials allowed. The portal talks to this API from its server (no browser, so no CORS), so by default nothing is allowed.
+ * Define TAP_OPS_CORS_ORIGINS (comma separated, e.g. 'https://auditportal.tapsvs.com') if a browser ever has to call it.
+ */
+add_action(
+	'rest_api_init',
+	function () {
+		remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
+		add_filter(
+			'rest_pre_serve_request',
+			function ( $value ) {
+				$origin  = isset( $_SERVER['HTTP_ORIGIN'] ) ? trim( (string) $_SERVER['HTTP_ORIGIN'] ) : ''; // phpcs:ignore
+				$allowed = defined( 'TAP_OPS_CORS_ORIGINS' ) ? array_map( 'trim', explode( ',', (string) TAP_OPS_CORS_ORIGINS ) ) : array();
+				header( 'Vary: Origin', false );
+				if ( '' !== $origin && in_array( $origin, $allowed, true ) ) {
+					header( 'Access-Control-Allow-Origin: ' . esc_url_raw( $origin ) );
+					header( 'Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE' );
+					header( 'Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Type, X-TAP-Key, X-TAP-User' );
+					header( 'Access-Control-Allow-Credentials: true' );
+				}
+				return $value;
+			}
+		);
+	},
+	20
+);
+
+/**
+ * Anonymous visitors only need the TAP API (which has its own key). Everything else in the WordPress REST API
+ * (posts, pages, comments, media, the index of routes) is closed to them. Signed-in WordPress users, and the admin screens, are unaffected.
+ * Define TAP_OPS_KEEP_PUBLIC_REST as true to switch this off.
+ */
+add_filter(
+	'rest_authentication_errors',
+	function ( $result ) {
+		if ( ! empty( $result ) || ( defined( 'TAP_OPS_KEEP_PUBLIC_REST' ) && TAP_OPS_KEEP_PUBLIC_REST ) || is_user_logged_in() ) {
+			return $result;
+		}
+		$route = isset( $GLOBALS['wp']->query_vars['rest_route'] ) ? (string) $GLOBALS['wp']->query_vars['rest_route'] : '';
+		if ( 0 === strpos( $route, '/tap/v1' ) ) {
+			return $result;
+		}
+		return new WP_Error( 'rest_not_available', 'This part of the API is not available.', array( 'status' => 401 ) );
+	},
+	99
+);
+
+/** Do not announce the WordPress version in the page source. */
+remove_action( 'wp_head', 'wp_generator' );
+add_filter( 'the_generator', '__return_empty_string' );

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { customers } from "@/lib/repo";
 import { CustomerForm } from "@/components/customers/CustomerForm";
 
+export const metadata = { title: "Edit customer" };
+
 export default async function EditCustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ returnTo?: string }> }) {
   const { id } = await params;
   const { returnTo } = await searchParams;

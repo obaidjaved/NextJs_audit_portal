@@ -2,6 +2,8 @@ import { users as usersRepo } from "@/lib/repo";
 import { requireAdminPage } from "@/lib/access";
 import { TeamManager } from "@/components/team/TeamManager";
 
+export const metadata = { title: "Team & access" };
+
 export default async function TeamPage() {
   const admin = await requireAdminPage();
 

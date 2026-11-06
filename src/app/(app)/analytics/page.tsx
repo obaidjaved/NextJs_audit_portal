@@ -3,6 +3,8 @@ import { requireAdminPage } from "@/lib/access";
 import { computeAnalytics, type GroupStat } from "@/lib/analytics";
 import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 
+export const metadata = { title: "Analytics" };
+
 const LABEL = { fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: ".05em" } as const;
 const scoreColor = (n: number) => (n >= 90 ? "var(--ok)" : n >= 70 ? "var(--warn)" : "var(--danger)");
 

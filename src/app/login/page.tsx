@@ -4,6 +4,8 @@ import { getSession } from "@/lib/access";
 import { LoginForm } from "./LoginForm";
 import { LoginHero } from "./LoginHero";
 
+export const metadata = { title: "Sign in" };
+
 export default async function LoginPage() {
   // The proxy only checks the cookie's signature, so it cannot tell an active
   // user from a deactivated one and must not bounce people off this page — that

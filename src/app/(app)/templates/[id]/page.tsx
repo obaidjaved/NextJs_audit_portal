@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/access";
 import { FIELD_TYPE_MAP, type TemplateField } from "@/lib/field-types";
 import { FieldTypeIcon } from "@/components/template-builder/FieldTypeIcon";
 
+export const metadata = { title: "Template" };
+
 export default async function TemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();

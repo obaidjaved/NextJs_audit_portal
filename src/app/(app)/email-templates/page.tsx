@@ -3,6 +3,8 @@ import { emailTemplates } from "@/lib/repo";
 import { requireAdminPage } from "@/lib/access";
 import { EmailTemplatesManager } from "@/components/audits/EmailTemplatesManager";
 
+export const metadata = { title: "Email templates" };
+
 export default async function EmailTemplatesPage() {
   await requireAdminPage();
   const templates = await emailTemplates.list();

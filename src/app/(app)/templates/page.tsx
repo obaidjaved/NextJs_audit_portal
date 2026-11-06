@@ -2,6 +2,8 @@ import Link from "next/link";
 import { templates as templatesRepo } from "@/lib/repo";
 import { requireUser } from "@/lib/access";
 
+export const metadata = { title: "Templates" };
+
 export default async function TemplatesPage() {
   const user = await requireUser();
   const templates = (await templatesRepo.list()).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
@@ -10,7 +12,7 @@ export default async function TemplatesPage() {
     <div className="card panel">
       <div className="panel-top">
         <div>
-          <h2 style={{ margin: "0 0 4px" }}>Template Library</h2>
+          <h1 className="disp" style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800 }}>Template Library</h1>
           <p className="sub" style={{ margin: 0, color: "var(--ink-2)", fontSize: 13 }}>
             TAP Services&apos; own audit templates.
           </p>

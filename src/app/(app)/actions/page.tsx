@@ -5,6 +5,8 @@ import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 import { ActionRow, type ActionRowData } from "@/components/actions/ActionRow";
 import { ActionForm } from "@/components/actions/ActionForm";
 
+export const metadata = { title: "Corrective actions" };
+
 const TABS = [
   { key: "open", label: "Open" },
   { key: "overdue", label: "Overdue" },

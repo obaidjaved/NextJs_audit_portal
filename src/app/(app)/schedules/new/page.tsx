@@ -2,6 +2,8 @@ import { templates as templatesRepo, customers as customersRepo } from "@/lib/re
 import { requireAdminPage } from "@/lib/access";
 import { ScheduleForm } from "@/components/schedules/ScheduleForm";
 
+export const metadata = { title: "New schedule" };
+
 export default async function NewSchedulePage() {
   await requireAdminPage();
   const [templates, customers] = (await Promise.all([templatesRepo.list(), customersRepo.list()])).map((list) =>

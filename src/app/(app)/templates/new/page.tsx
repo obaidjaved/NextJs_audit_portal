@@ -1,6 +1,8 @@
 import { requireAdminPage } from "@/lib/access";
 import { TemplateBuilder } from "@/components/template-builder/TemplateBuilder";
 
+export const metadata = { title: "New template" };
+
 export default async function NewTemplatePage() {
   await requireAdminPage();
   return (

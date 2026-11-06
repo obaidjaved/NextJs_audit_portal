@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/access";
 
+export const metadata = { title: "Help" };
+
 interface Step {
   title: string;
   body: string;

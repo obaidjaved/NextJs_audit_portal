@@ -7,7 +7,8 @@
       "step": "defineWpConfigConsts",
       "consts": {
         "TAP_API_KEY": "test-key-123",
-        "TAP_ALLOW_DEV_SEED": true
+        "TAP_ALLOW_DEV_SEED": true,
+        "TAP_SEED_PASSWORD": "changeme123"
       }
     },
     { "step": "activatePlugin", "pluginPath": "tap-ops/tap-ops.php" }

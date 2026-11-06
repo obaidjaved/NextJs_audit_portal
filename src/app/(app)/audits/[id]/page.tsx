@@ -10,6 +10,8 @@ import { ActionRow, type ActionRowData } from "@/components/actions/ActionRow";
 import { ActionForm } from "@/components/actions/ActionForm";
 import { todayKey as todayInBusinessZone } from "@/lib/schedule";
 
+export const metadata = { title: "Audit report" };
+
 const SECTION_LABEL = { fontSize: 11, fontWeight: 700, color: "var(--ink-2)", textTransform: "uppercase", letterSpacing: ".05em" } as const;
 
 export default async function AuditDetailPage({ params }: { params: Promise<{ id: string }> }) {

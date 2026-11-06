@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 // Public, unauthenticated. Submissions land in the portal under Customers > New Requests.
 export const metadata: Metadata = {
-  title: "Request a Quote | TAP Services",
+  title: { absolute: "Request a Quote | TAP Services" },
   description: "Request a custom quote for electrical engineering, auditing, maintenance, or training services.",
 };
 

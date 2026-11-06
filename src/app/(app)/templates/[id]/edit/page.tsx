@@ -4,6 +4,8 @@ import { requireAdminPage } from "@/lib/access";
 import { TemplateBuilder, type TemplateFormState } from "@/components/template-builder/TemplateBuilder";
 import type { TemplateField } from "@/lib/field-types";
 
+export const metadata = { title: "Edit template" };
+
 export default async function EditTemplatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requireAdminPage();
