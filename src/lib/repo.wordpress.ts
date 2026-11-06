@@ -199,6 +199,9 @@ const requests: Backend["requests"] = {
   reject: async (id, note) => {
     await wp(`/requests/${id}/reject`, { method: "POST", body: { note }, userId: await actor() });
   },
+  remove: async (id) => {
+    await wp(`/requests/${id}`, { method: "DELETE", userId: await actor() });
+  },
 };
 
 const schedules: Backend["schedules"] = {

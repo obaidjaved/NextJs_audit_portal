@@ -403,6 +403,21 @@ function tap_ops_h_request_approve( WP_REST_Request $request ) {
 	return array( 'customerId' => (string) $cid );
 }
 
+/** Admin: delete a lead for good. A lead that was converted into a customer stays (the customer is built on it). */
+function tap_ops_h_request_delete( WP_REST_Request $request ) {
+	global $wpdb;
+	$id  = tap_ops_int_id( $request['id'] );
+	$row = tap_ops_get_request_row( $id );
+	if ( ! $row ) {
+		return tap_ops_err( 404, 'not_found', 'Request not found.' );
+	}
+	if ( 'APPROVED' === $row['status'] || ! empty( $row['customer_id'] ) ) {
+		return tap_ops_err( 409, 'converted', 'This lead was converted into a customer, so it cannot be deleted.' );
+	}
+	$wpdb->delete( tap_ops_t( 'requests' ), array( 'id' => $id ) );
+	return array( 'ok' => true );
+}
+
 function tap_ops_h_request_reject( WP_REST_Request $request ) {
 	$id = tap_ops_int_id( $request['id'] );
 	if ( ! tap_ops_get_request_row( $id ) ) {

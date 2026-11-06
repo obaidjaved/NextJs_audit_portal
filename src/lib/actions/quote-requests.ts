@@ -7,6 +7,7 @@ import { requests, RepoError } from "@/lib/repo";
 import { leadSchema, quoteRequestSchema } from "@/lib/validation/quote-request";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { emailAdminsNewLead } from "@/lib/notify";
+import { logAdminAction } from "@/lib/admin-log";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 import { attempt, type ActionResult } from "./result";
 
@@ -56,6 +57,23 @@ export async function createLead(input: unknown): Promise<ActionResult> {
     const data = parseOrThrow(leadSchema, input ?? {});
     await requests.create(data, { manual: true });
     revalidatePath("/leads");
+  });
+}
+
+// Admin: removes a lead for good (a test entry, spam, a duplicate). Converted leads are kept, because a customer is built on them.
+export async function deleteLead(id: string): Promise<ActionResult> {
+  return attempt(async () => {
+    const admin = await requireAdmin();
+    try {
+      await requests.remove(id);
+    } catch (err) {
+      if (err instanceof RepoError && err.status === 404) throw new Error("This lead no longer exists.");
+      if (err instanceof RepoError && err.status === 409) throw new Error("This lead was converted into a customer, so it can't be deleted.");
+      throw err;
+    }
+    logAdminAction(admin, "lead.delete", { leadId: id });
+    revalidatePath("/leads");
+    revalidatePath("/");
   });
 }
 

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { rejectQuoteRequest } from "@/lib/actions/quote-requests";
+import { deleteLead, rejectQuoteRequest } from "@/lib/actions/quote-requests";
 import { updateLead } from "@/lib/actions/ops";
 import { unwrap } from "@/lib/actions/result";
 import { LEAD_STATUSES, money } from "@/lib/ops-options";
@@ -35,6 +35,20 @@ export function LeadDetails({ lead: l, canReview, onClose, onConvert }: { lead: 
         onClose();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Couldn't reject this lead.");
+      }
+    });
+  }
+
+  function remove() {
+    if (!confirm(`Delete ${l.companyName || "this lead"} for good? This can't be undone.`)) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        unwrap(await deleteLead(l.id));
+        router.refresh();
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Couldn't delete this lead.");
       }
     });
   }
@@ -117,17 +131,23 @@ export function LeadDetails({ lead: l, canReview, onClose, onConvert }: { lead: 
 
       <div className="dtl-foot">
         <CallEmail email={l.email} phone={l.phone} />
-        {l.status === "PENDING" && (
+        {(l.status === "PENDING" || (canReview && l.status !== "APPROVED")) && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
-            {canReview ? (
-              <>
-                <button type="button" className="btn primary sm" disabled={pending} onClick={onConvert}>
-                  Convert to customer
-                </button>
-                <button type="button" className="btn ghost sm" disabled={pending} onClick={reject}>Reject</button>
-              </>
-            ) : (
-              <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>Only an administrator can convert or reject leads.</span>
+            {l.status === "PENDING" &&
+              (canReview ? (
+                <>
+                  <button type="button" className="btn primary sm" disabled={pending} onClick={onConvert}>
+                    Convert to customer
+                  </button>
+                  <button type="button" className="btn ghost sm" disabled={pending} onClick={reject}>Reject</button>
+                </>
+              ) : (
+                <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>Only an administrator can convert or reject leads.</span>
+              ))}
+            {canReview && (
+              <button type="button" className="btn ghost sm" style={{ color: "var(--danger)", borderColor: "var(--danger)" }} disabled={pending} onClick={remove}>
+                Delete
+              </button>
             )}
           </div>
         )}

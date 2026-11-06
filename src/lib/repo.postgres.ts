@@ -466,6 +466,15 @@ const requests: Backend["requests"] = {
       throw err;
     }
   },
+  remove: async (id) => {
+    // A converted lead is the record behind a customer, so it stays.
+    const { count } = await prisma.customerRequest.deleteMany({ where: { id, customerId: null, status: { not: "APPROVED" } } });
+    if (count === 0) {
+      const exists = await prisma.customerRequest.findUnique({ where: { id }, select: { id: true } });
+      if (!exists) throw new RepoError(404, "not_found", "This lead no longer exists.");
+      throw new RepoError(409, "converted", "This lead was converted into a customer, so it can't be deleted.");
+    }
+  },
 };
 
 const scheduleInclude = { template: { select: { name: true } }, customer: { select: { name: true } } } as const;

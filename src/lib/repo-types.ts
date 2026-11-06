@@ -314,6 +314,8 @@ export interface Backend {
     update(id: string, patch: LeadPatch): Promise<void>;
     approve(id: string): Promise<{ customerId: string | null }>;
     reject(id: string, note?: string): Promise<void>;
+    /** Removes a lead for good. Refused (409) once it has been converted into a customer. */
+    remove(id: string): Promise<void>;
   };
   emailTemplates: {
     list(): Promise<EmailTemplate[]>;
