@@ -7,6 +7,7 @@ import { requests, RepoError } from "@/lib/repo";
 import { leadSchema, quoteRequestSchema } from "@/lib/validation/quote-request";
 import { parseOrThrow } from "@/lib/validation/parse";
 import { emailAdminsNewLead } from "@/lib/notify";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 import { attempt, type ActionResult } from "./result";
 
 // Best-effort, per-instance throttle for the public form (5 submissions / hour / IP).
@@ -37,6 +38,8 @@ export async function submitQuoteRequest(input: unknown): Promise<ActionResult> 
     const h = await headers();
     const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
     if (throttled(ip)) throw new Error("Too many requests from your network. Please try again later or call us.");
+
+    await verifyRecaptcha(raw.recaptchaToken, "quote_request", ip);
 
     const data = parseOrThrow(quoteRequestSchema, raw);
     await requests.create(data);

@@ -6,6 +6,7 @@ import { createLead, submitQuoteRequest } from "@/lib/actions/quote-requests";
 import { createCustomerWithPayment } from "@/lib/actions/ops";
 import { PaymentSection, checkPayment, emptyPayment, paymentPayload, type PaymentFormState } from "@/components/ops/PaymentSection";
 import { unwrap } from "@/lib/actions/result";
+import { useRecaptcha } from "@/components/quote/useRecaptcha";
 import { SERVICE_GROUPS, US_STATES } from "@/lib/quote-options";
 
 const LABEL = { display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-2)" } as const;
@@ -64,6 +65,7 @@ export function QuoteForm({
   const [done, setDone] = useState(false);
   const [f, setF] = useState(EMPTY);
   const [services, setServices] = useState<string[]>([]);
+  const getRecaptchaToken = useRecaptcha(!staff);
 
   const set = (key: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setF((s) => ({ ...s, [key]: e.target.value }));
@@ -93,7 +95,9 @@ export function QuoteForm({
           router.push("/leads");
           return;
         }
-        unwrap(await submitQuoteRequest({ ...f, services }));
+        // Public form: reCAPTCHA v3 token (fresh and single-use), verified server-side.
+        const recaptchaToken = await getRecaptchaToken("quote_request");
+        unwrap(await submitQuoteRequest({ ...f, services, recaptchaToken }));
         setDone(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (err) {

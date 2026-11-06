@@ -33,6 +33,7 @@ Project → **Settings → Environment Variables**:
 | `DATABASE_URL` | your Postgres connection string (see above) |
 | `AUTH_SECRET` | random string — generate with `npx auth secret` |
 | `NEXTAUTH_URL` | your production URL, e.g. `https://portal.tapsvs.com` (Vercel also sets `VERCEL_URL` automatically, which Auth.js trusts) |
+| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | Google reCAPTCHA **v3** keys for the public `/request-quote` form (invisible; optional `RECAPTCHA_MIN_SCORE`, default 0.5). Register your production domain in the [reCAPTCHA admin](https://www.google.com/recaptcha/admin). The form refuses submissions if the secret is missing. The site key is baked in at build time, so redeploy after changing it. |
 | Blob store | optional, for photo/video uploads: **Storage → Create → Blob**, then connect it to the project (adds `BLOB_STORE_ID` automatically — photos work with that; **video also needs `BLOB_READ_WRITE_TOKEN`**, copied from the store's `.env.local` tab into the project's Environment Variables) |
 
 ## 5. Run migrations and create the first admin

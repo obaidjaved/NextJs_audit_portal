@@ -42,6 +42,7 @@ Visit `https://staging.tapsvs.com/wp-json/tap/v1/customers` in a browser — you
 | `AUTH_SECRET` | a random string — generate with `npx auth secret` (use a **different** value than production) |
 | `NEXTAUTH_URL` | this project's URL once you know it, e.g. `https://tap-ops-staging.vercel.app` |
 | `AUTH_TRUST_HOST` | `true` |
+| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | reCAPTCHA v3 keys for the public quote form; the staging domain must be registered for the key in the reCAPTCHA admin |
 
 Do **not** set `DATABASE_URL` here — this deployment never touches Postgres.
 
