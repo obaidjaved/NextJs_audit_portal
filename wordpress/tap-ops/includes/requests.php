@@ -206,6 +206,11 @@ function tap_ops_notify_new_request( array $r ) {
 			if ( ! $to ) {
 				return;
 			}
+			// Never let a flood of requests become a flood of emails: at most 20 notifications an hour (the requests are still saved).
+			if ( tap_ops_throttle_count( 'notify-new-request' ) >= 20 ) {
+				return;
+			}
+			tap_ops_throttle_hit( 'notify-new-request', HOUR_IN_SECONDS );
 			$name   = trim( $r['firstName'] . ' ' . $r['lastName'] );
 			$who    = '' !== $r['companyName'] ? $r['companyName'] : $name;
 			$wanted = implode( ', ', array_merge( (array) $r['services'], (array) $r['trainings'] ) );
@@ -233,7 +238,16 @@ function tap_ops_notify_new_request( array $r ) {
 }
 
 function tap_ops_h_request_create( WP_REST_Request $request ) {
-	return tap_ops_create_request( tap_ops_body( $request ), true, 'api' );
+	$body = tap_ops_body( $request );
+	// The public quote form: at most 5 requests an hour from one address (the portal passes it as clientIp).
+	$ip = tap_ops_forwarded_ip( $body );
+	if ( $ip ) {
+		if ( tap_ops_throttle_count( 'quote:' . $ip ) >= 5 ) {
+			return tap_ops_err( 429, 'too_many_requests', 'Too many requests from your network. Please try again later or call us.' );
+		}
+		tap_ops_throttle_hit( 'quote:' . $ip, HOUR_IN_SECONDS );
+	}
+	return tap_ops_create_request( $body, true, 'api' );
 }
 
 /** Staff edits to a lead from the dashboard: status, payment, quote, date. */
@@ -308,7 +322,7 @@ function tap_ops_h_request_patch( WP_REST_Request $request ) {
 function tap_ops_h_requests_list() {
 	global $wpdb;
 	$t = tap_ops_t( 'requests' );
-	return array_map( 'tap_ops_request_out', (array) $wpdb->get_results( "SELECT * FROM $t ORDER BY created_at DESC, id DESC LIMIT 2000", ARRAY_A ) ); // phpcs:ignore
+	return array_map( 'tap_ops_request_out', (array) $wpdb->get_results( "SELECT * FROM $t ORDER BY created_at DESC, id DESC LIMIT 10000", ARRAY_A ) ); // phpcs:ignore
 }
 
 function tap_ops_h_requests_pending_count() {

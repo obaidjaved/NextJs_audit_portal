@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/access";
+import { logAdminAction } from "@/lib/admin-log";
 import { customers, RepoError } from "@/lib/repo";
 import { customerSchema } from "@/lib/validation/customer";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -29,9 +30,10 @@ export async function updateCustomer(id: string, input: unknown) {
 
 export async function deleteCustomer(id: string) {
   return attempt(async () => {
-    await requireAdmin();
+    const admin = await requireAdmin();
     try {
       await customers.remove(id);
+      logAdminAction(admin, "customer.delete", { customerId: id });
     } catch (err) {
       if (err instanceof RepoError && err.status === 409) {
         throw new Error("Can't delete — this customer has audits or schedules using it.");

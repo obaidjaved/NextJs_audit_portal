@@ -1,6 +1,16 @@
 import { headers } from "next/headers";
 import { mail, users } from "@/lib/repo";
 
+// Links in emails point at the portal. Set APP_URL (for example https://auditportal.tapsvs.com) so they never depend on request
+// headers; without it the host of the current request is used.
+async function portalLink(path: string): Promise<string> {
+  const fixed = process.env.APP_URL?.trim().replace(new RegExp("/+$"), "");
+  if (fixed) return `${fixed}${path}`;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  return host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}${path}` : "";
+}
+
 interface NewLeadSummary {
   firstName: string;
   lastName: string;
@@ -21,9 +31,7 @@ export async function emailAdminsNewLead(lead: NewLeadSummary): Promise<void> {
     const admins = (await users.list()).filter((u) => u.role === "ADMIN" && u.active && u.email);
     if (admins.length === 0) return;
 
-    const h = await headers();
-    const host = h.get("x-forwarded-host") ?? h.get("host");
-    const link = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}/leads` : "";
+    const link = await portalLink("/leads");
     const who = lead.companyName || `${lead.firstName} ${lead.lastName}`.trim();
     const wanted = [...lead.services, ...lead.trainings].join(", ");
     const body = [
@@ -57,12 +65,7 @@ export async function emailTeamMember(userId: string, subject: string, paragraph
     const person = (await users.list()).find((u) => u.id === userId && u.active);
     if (!person?.email) return;
 
-    let link = "";
-    if (path) {
-      const h = await headers();
-      const host = h.get("x-forwarded-host") ?? h.get("host");
-      if (host) link = `${h.get("x-forwarded-proto") ?? "https"}://${host}${path}`;
-    }
+    const link = path ? await portalLink(path) : "";
     const body = [`Hello ${person.name},`, ...paragraphs, link ? `Open it here: ${link}` : "", "— TAP Ops Console"].filter(Boolean).join("\n\n");
     await mail.send({ to: person.email, subject, body });
   } catch {

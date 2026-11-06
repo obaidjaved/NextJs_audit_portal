@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/access";
+import { logAdminAction } from "@/lib/admin-log";
 import { templates, RepoError } from "@/lib/repo";
 import { templateSchema } from "@/lib/validation/template";
 import { parseOrThrow } from "@/lib/validation/parse";
@@ -35,9 +36,10 @@ export async function updateTemplate(id: string, input: unknown) {
 
 export async function deleteTemplate(id: string) {
   return attempt(async () => {
-    await requireAdmin();
+    const admin = await requireAdmin();
     try {
       await templates.remove(id);
+      logAdminAction(admin, "template.delete", { templateId: id });
     } catch (err) {
       // The backend refuses (409) while audits or schedules still reference this template.
       if (err instanceof RepoError && err.status === 409) {

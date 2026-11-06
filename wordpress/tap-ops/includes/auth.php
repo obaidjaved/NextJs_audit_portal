@@ -47,10 +47,17 @@ function tap_ops_check_key( WP_REST_Request $request ) {
 		return tap_ops_err( 503, 'not_configured', 'TAP_API_KEY is not configured on the server.' );
 	}
 	$sent = (string) $request->get_header( 'x_tap_key' );
-	if ( '' === $sent || ! hash_equals( TAP_API_KEY, $sent ) ) {
+	if ( '' === $sent ) {
 		return tap_ops_err( 401, 'bad_key', 'Missing or invalid API key.' );
 	}
-	return true;
+	if ( hash_equals( TAP_API_KEY, $sent ) ) {
+		return true;
+	}
+	// Key rotation: define TAP_API_KEY_PREVIOUS with the old key while the portal's environment variable is switched over, then remove it.
+	if ( defined( 'TAP_API_KEY_PREVIOUS' ) && is_string( TAP_API_KEY_PREVIOUS ) && '' !== TAP_API_KEY_PREVIOUS && hash_equals( TAP_API_KEY_PREVIOUS, $sent ) ) {
+		return true;
+	}
+	return tap_ops_err( 401, 'bad_key', 'Missing or invalid API key.' );
 }
 
 function tap_ops_check_user( WP_REST_Request $request, $need_admin ) {

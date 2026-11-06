@@ -48,7 +48,7 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
   }
 
   function resetPassword(u: TeamUser) {
-    const password = prompt(`New password for ${u.name} (min 8 characters):`);
+    const password = prompt(`New password for ${u.name} (at least 10 characters, with a letter and a number):`);
     if (password) run(() => resetUserPassword(u.id, password));
   }
 
@@ -135,7 +135,7 @@ export function TeamManager({ users, currentUserId }: { users: TeamUser[]; curre
               </select>
             </label>
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className="btn primary sm" disabled={pending || !form.name || !form.email || form.password.length < 8} onClick={create}>
+              <button type="button" className="btn primary sm" disabled={pending || !form.name || !form.email || form.password.length < 10} onClick={create}>
                 {pending ? "Creating…" : "Create user"}
               </button>
               <button type="button" className="btn ghost sm" onClick={() => setShowForm(false)}>Cancel</button>

@@ -270,3 +270,12 @@ model EmailTemplate {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// Failed sign-in attempts, kept for a short while so password guessing can be slowed down (see lib/rate-limit.ts).
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  bucket    String
+  createdAt DateTime @default(now())
+
+  @@index([bucket, createdAt])
+}

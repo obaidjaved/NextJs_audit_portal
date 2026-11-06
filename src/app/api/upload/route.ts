@@ -4,9 +4,32 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { auth } from "@/lib/auth";
 import { blobConfigured } from "@/lib/blob-config";
+import { allow } from "@/lib/rate-limit";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const INLINE_MAX_BYTES = 800 * 1024; // largest photo we'll store inline as a data URL
+const UPLOADS_PER_HOUR = 150; // per signed-in user
+
+// The browser says what a file is; check the first bytes really are that kind of file.
+function looksLike(type: string, head: Uint8Array): boolean {
+  const at = (i: number, s: string) => s.split("").every((c, k) => head[i + k] === c.charCodeAt(0));
+  switch (type) {
+    case "image/jpeg":
+      return head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+    case "image/png":
+      return head[0] === 0x89 && at(1, "PNG");
+    case "image/gif":
+      return at(0, "GIF8");
+    case "image/webp":
+      return at(0, "RIFF") && at(8, "WEBP");
+    case "image/heic":
+      return at(4, "ftyp");
+    case "application/pdf":
+      return at(0, "%PDF");
+    default:
+      return false;
+  }
+}
 
 // Only accept known-safe image types, and derive the stored filename's
 // extension from this allowlist — never from the client-supplied filename —
@@ -30,6 +53,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!(await allow(`upload:${session.user?.id ?? "unknown"}`, UPLOADS_PER_HOUR, 60 * 60 * 1000))) {
+    return NextResponse.json({ error: "Too many uploads. Please wait a while and try again." }, { status: 429 });
+  }
+
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -42,6 +69,10 @@ export async function POST(request: Request) {
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "File too large (10MB max)" }, { status: 413 });
+  }
+
+  if (!looksLike(file.type, new Uint8Array(await file.slice(0, 16).arrayBuffer()))) {
+    return NextResponse.json({ error: "That file doesn't look like a real " + (file.type === "application/pdf" ? "PDF." : "image.") }, { status: 415 });
   }
 
   const filename = `${randomUUID()}${ext}`;

@@ -17,7 +17,9 @@ export async function loginAction(
   } catch (err) {
     if (err instanceof AuthError) {
       // The email comes back so the form can keep it (React clears the fields after a submit); the password never does.
-      return { error: "Invalid email or password.", email: typeof email === "string" ? email : "" };
+      const kept = typeof email === "string" ? email : "";
+      if ((err as { code?: string }).code === "rate_limited") return { error: "Too many failed attempts. Please wait 15 minutes, then try again.", email: kept };
+      return { error: "Invalid email or password.", email: kept };
     }
     throw err;
   }

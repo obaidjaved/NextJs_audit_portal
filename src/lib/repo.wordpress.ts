@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { getSession } from "@/lib/access";
+import { clientIpFrom } from "@/lib/client-ip";
 import { wp } from "@/lib/wp/client";
 import type {
   Backend,
@@ -184,7 +186,8 @@ const requests: Backend["requests"] = {
     requestOf(
       await wp<Record<string, unknown>>("/requests", {
         method: "POST",
-        body: opts?.manual ? { ...data, source: "manual" } : data,
+        // The plugin limits how often one address can send a request, so it needs to know the address.
+        body: opts?.manual ? { ...data, source: "manual" } : { ...data, clientIp: clientIpFrom(await headers()) || undefined },
         timeoutMs: 25_000,
         retryUnavailable: true,
       }),

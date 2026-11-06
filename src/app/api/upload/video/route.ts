@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { auth } from "@/lib/auth";
+import { allow } from "@/lib/rate-limit";
 
 const MAX_VIDEO_BYTES = 150 * 1024 * 1024; // 150MB
 
@@ -14,6 +15,7 @@ const NOT_READY =
 
 // Lets the browser check up front, so it can show the real reason.
 export async function GET() {
+  if (!(await auth())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json({ enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN), reason: NOT_READY });
 }
 
@@ -29,6 +31,10 @@ export async function POST(request: Request) {
   if (body.type === "blob.generate-client-token") {
     const session = await auth();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Each token allows a video of up to 150MB, so keep the number per person modest.
+    if (!(await allow(`video:${session.user?.id ?? "unknown"}`, 30, 60 * 60 * 1000))) {
+      return NextResponse.json({ error: "Too many video uploads. Please wait a while and try again." }, { status: 429 });
+    }
   }
 
   try {

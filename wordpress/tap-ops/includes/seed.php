@@ -8,6 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function tap_ops_seed_user( $email, $name, $wp_role ) {
+	// The demo password is only for local/staging sites. On a production site the demo users get a random one.
+	$pass = 'production' === wp_get_environment_type() ? wp_generate_password( 24, true, true ) : 'changeme123';
 	$existing = get_user_by( 'email', $email );
 	if ( $existing ) {
 		return (int) $existing->ID;
@@ -16,7 +18,7 @@ function tap_ops_seed_user( $email, $name, $wp_role ) {
 		array(
 			'user_login'   => $email,
 			'user_email'   => $email,
-			'user_pass'    => 'changeme123',
+			'user_pass'    => $pass,
 			'display_name' => $name,
 			'nickname'     => $name,
 			'role'         => $wp_role,

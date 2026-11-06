@@ -46,6 +46,11 @@ function tap_ops_load_tap_user( $id ) {
 	return $user;
 }
 
+/** Changes whenever the password does, so the portal can end sessions that were opened with the old one. */
+function tap_ops_session_version( WP_User $user ) {
+	return substr( md5( (string) $user->user_pass ), 0, 16 );
+}
+
 function tap_ops_h_login( WP_REST_Request $request ) {
 	$body     = tap_ops_body( $request );
 	$identity = isset( $body['email'] ) && is_string( $body['email'] ) ? trim( $body['email'] ) : '';
@@ -54,9 +59,13 @@ function tap_ops_h_login( WP_REST_Request $request ) {
 		return tap_ops_err( 422, 'validation', 'email and password are required.' );
 	}
 
-	$throttle_key = 'tap_login_' . md5( strtolower( $identity ) );
-	$fails        = (int) get_transient( $throttle_key );
-	if ( $fails >= 10 ) {
+	// Throttle per person-at-an-address, not per account: otherwise anyone could lock the real admin out by guessing at it.
+	// The portal passes the visitor's address as clientIp (this endpoint already required the API key).
+	$ip       = tap_ops_forwarded_ip( $body );
+	$id_key   = $ip ? 'login:' . strtolower( $identity ) . '|' . $ip : 'login:' . strtolower( $identity );
+	$id_limit = $ip ? 8 : 10;
+	$ip_key   = 'login-ip:' . $ip;
+	if ( tap_ops_throttle_count( $id_key ) >= $id_limit || ( $ip && tap_ops_throttle_count( $ip_key ) >= 40 ) ) {
 		return tap_ops_err( 429, 'too_many_attempts', 'Too many failed attempts. Try again in 15 minutes.' );
 	}
 
@@ -70,16 +79,20 @@ function tap_ops_h_login( WP_REST_Request $request ) {
 		&& tap_ops_user_active( $user );
 
 	if ( ! $ok ) {
-		set_transient( $throttle_key, $fails + 1, 15 * MINUTE_IN_SECONDS );
+		tap_ops_throttle_hit( $id_key, 15 * MINUTE_IN_SECONDS );
+		if ( $ip ) {
+			tap_ops_throttle_hit( $ip_key, 15 * MINUTE_IN_SECONDS );
+		}
 		return tap_ops_err( 401, 'bad_credentials', 'Invalid email or password.' );
 	}
-	delete_transient( $throttle_key );
+	tap_ops_throttle_clear( $id_key );
 
 	return array(
 		'id'    => (string) $user->ID,
 		'name'  => (string) $user->display_name,
 		'email' => (string) $user->user_email,
 		'role'  => tap_ops_user_role( $user ),
+		'sv'    => tap_ops_session_version( $user ),
 	);
 }
 
@@ -98,7 +111,9 @@ function tap_ops_h_user_get( WP_REST_Request $request ) {
 	if ( ! $user ) {
 		return tap_ops_err( 404, 'not_found', 'User not found.' );
 	}
-	return tap_ops_user_out( $user );
+	$out       = tap_ops_user_out( $user );
+	$out['sv'] = tap_ops_session_version( $user );
+	return $out;
 }
 
 function tap_ops_h_user_create( WP_REST_Request $request ) {
@@ -114,8 +129,8 @@ function tap_ops_h_user_create( WP_REST_Request $request ) {
 	if ( ! is_email( $email ) ) {
 		return tap_ops_err( 422, 'validation', 'A valid email is required.' );
 	}
-	if ( strlen( $pass ) < 8 ) {
-		return tap_ops_err( 422, 'validation', 'password must be at least 8 characters.' );
+	if ( strlen( $pass ) < 10 ) {
+		return tap_ops_err( 422, 'validation', 'password must be at least 10 characters.' );
 	}
 	if ( ! in_array( $role, array( 'ADMIN', 'INSPECTOR' ), true ) ) {
 		return tap_ops_err( 422, 'validation', 'role must be ADMIN or INSPECTOR.' );
@@ -165,8 +180,8 @@ function tap_ops_h_user_patch( WP_REST_Request $request ) {
 	}
 	$pass = null;
 	if ( array_key_exists( 'password', $b ) ) {
-		if ( ! is_string( $b['password'] ) || strlen( $b['password'] ) < 8 ) {
-			return tap_ops_err( 422, 'validation', 'password must be at least 8 characters.' );
+		if ( ! is_string( $b['password'] ) || strlen( $b['password'] ) < 10 ) {
+			return tap_ops_err( 422, 'validation', 'password must be at least 10 characters.' );
 		}
 		$pass = $b['password'];
 	}

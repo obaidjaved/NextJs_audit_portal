@@ -7,6 +7,7 @@ import { parseOrThrow } from "@/lib/validation/parse";
 import { computeScore, computeCriticalFail, type ResponseObject } from "@/lib/scoring";
 import { nextDocNumber } from "@/lib/doc-number";
 import { requireStaff, requireAdmin } from "@/lib/access";
+import { logAdminAction } from "@/lib/admin-log";
 import { canAccessAudit, canEditAudit, LOCKED_MESSAGE } from "@/lib/audit-access";
 import { CORRECTION_PREFIX, MAX_CORRECTION_NOTE, reportWasSent } from "@/lib/audit-review";
 import { syncActionsFromAudit, logEvent } from "@/lib/corrective";
@@ -178,8 +179,9 @@ export async function approveAudit(id: string) {
 
 export async function deleteAudit(id: string) {
   return attempt(async () => {
-    await requireAdmin();
+    const admin = await requireAdmin();
     await audits.remove(id);
+    logAdminAction(admin, "audit.delete", { auditId: id });
     revalidatePath("/audits");
   });
 }
@@ -197,6 +199,7 @@ export async function setAuditSharing(id: string, enabled: boolean) {
     const { shareToken } = await audits.setShare(id, enabled);
     if (enabled) await audits.update(id, { reportSent: true }).catch(() => undefined);
     await logEvent(id, user.id, enabled ? "Public report link created" : "Public report link revoked");
+    logAdminAction(user, enabled ? "audit.share-on" : "audit.share-off", { auditId: id });
     revalidatePath(`/audits/${id}`);
     return { shareToken };
   });
