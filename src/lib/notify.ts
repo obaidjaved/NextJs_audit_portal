@@ -66,7 +66,7 @@ export async function emailTeamMember(userId: string, subject: string, paragraph
     if (!person?.email) return;
 
     const link = path ? await portalLink(path) : "";
-    const body = [`Hello ${person.name},`, ...paragraphs, link ? `Open it here: ${link}` : "", "— TAP Ops Console"].filter(Boolean).join("\n\n");
+    const body = [`Hello ${person.name},`, ...paragraphs, link ? `Open it here: ${link}` : "", "— TAP Services Electrical Risk & Reliability"].filter(Boolean).join("\n\n");
     await mail.send({ to: person.email, subject, body });
   } catch {
     // Ignored on purpose (see above).

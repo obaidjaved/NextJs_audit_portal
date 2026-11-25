@@ -25,7 +25,7 @@ export function LoginHero() {
 
       <div className="login-hero-top">
         <BrandMark size={38} />
-        <span className="disp login-wordmark">TAP Ops Console</span>
+        <span className="disp login-wordmark">TAP Services Electrical Risk &amp; Reliability</span>
       </div>
 
       <div className="login-hero-copy">

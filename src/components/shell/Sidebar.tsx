@@ -24,7 +24,7 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-brand-name">TAP Ops Console</span>
+        <span className="sidebar-brand-name">Tap ERR</span>
       </div>
 
       <nav className="sidebar-nav">

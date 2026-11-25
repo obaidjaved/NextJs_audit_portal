@@ -32,8 +32,8 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  // Each page names itself ("Audits · TAP Ops Console"), so browser tabs and history are easy to tell apart.
-  title: { default: "TAP Ops Console", template: "%s · TAP Ops Console" },
+  // Each page names itself ("Audits · TAP Services Electrical Risk & Reliability"), so browser tabs and history are easy to tell apart.
+  title: { default: "TAP Services Electrical Risk & Reliability", template: "%s · TAP Services Electrical Risk & Reliability" },
   description: "Field inspection and audit management for TAP Services",
 };
 

@@ -21,7 +21,7 @@ export default async function LoginPage() {
         <div className="login-card">
           <div className="login-brand">
             <span className="login-kicker rise" style={{ ["--d" as string]: "0.15s" }}>
-              TAP Ops Console
+              TAP Services Electrical Risk &amp; Reliability
             </span>
             <h1 className="disp login-title rise" style={{ ["--d" as string]: "0.22s" }}>
               Welcome back
