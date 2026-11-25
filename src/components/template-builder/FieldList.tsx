@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import type { TemplateField } from "@/lib/field-types";
 import { FieldTypePicker } from "./FieldTypePicker";
@@ -27,8 +28,20 @@ export function FieldList({
     onChange(fields.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }
 
+  // The field just removed, kept for a moment so a slip of the mouse can be undone.
+  const [removed, setRemoved] = useState<{ field: TemplateField; index: number } | null>(null);
+
   function removeField(index: number) {
+    setRemoved({ field: fields[index], index });
     onChange(fields.filter((_, i) => i !== index));
+  }
+
+  function undoRemove() {
+    if (!removed) return;
+    const next = [...fields];
+    next.splice(Math.min(removed.index, next.length), 0, removed.field);
+    onChange(next);
+    setRemoved(null);
   }
 
   function move(index: number, dir: -1 | 1) {
@@ -45,6 +58,15 @@ export function FieldList({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {removed && (
+        <div role="status" className="card-soft" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", fontSize: 13 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            Removed <strong>{removed.field.label || "an empty field"}</strong>.
+          </span>
+          <button type="button" className="btn ghost sm" onClick={undoRemove}>Undo</button>
+          <button type="button" className="btn ghost sm" style={{ padding: "0 10px" }} onClick={() => setRemoved(null)} aria-label="Dismiss">✕</button>
+        </div>
+      )}
       {fields.map((field, i) => (
         <div key={field.id} className="card" style={{ padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -78,7 +100,7 @@ export function FieldList({
               Required
             </label>
 
-            <button type="button" className="btn ghost sm" style={{ padding: 8, height: 36, width: 36, flex: "none" }} onClick={() => removeField(i)} aria-label="Remove field">
+            <button type="button" className="btn ghost sm" style={{ padding: 8, height: 36, width: 36, flex: "none" }} onClick={() => removeField(i)} aria-label={`Remove ${field.label || "field"}`} title="Remove this field">
               <Trash2 size={14} />
             </button>
           </div>

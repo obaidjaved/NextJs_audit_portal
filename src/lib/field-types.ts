@@ -113,7 +113,8 @@ export interface TemplateField {
 
 export const hasCheckboxItems = (f: TemplateField) => f.type === "checkbox" && (f.items?.length ?? 0) > 0;
 
-// Fields every new template starts with; edit or delete any of them.
+// Fields every new template starts with; edit or remove any of them (the bin icon on each field).
+// There is deliberately no Signature field here: add one with "Add field" when a template needs it.
 export function defaultTemplateFields(): TemplateField[] {
   const mk = (n: string, f: Omit<TemplateField, "id">): TemplateField => ({ id: `field-default-${n}`, ...f });
   return [
@@ -122,7 +123,6 @@ export function defaultTemplateFields(): TemplateField[] {
     mk("location", { label: "Location", type: "location", required: false, autofill: "site" }),
     mk("instruction", { label: "Review the customer's scope and site instructions before you start.", type: "instruction", required: false }),
     mk("remarks", { label: "Remarks of inspector", type: "text", required: false }),
-    mk("signature", { label: "Signature", type: "signature", required: true }),
   ];
 }
 
