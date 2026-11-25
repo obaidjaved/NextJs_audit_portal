@@ -16,7 +16,7 @@ const services = z.array(z.enum(ALL_SERVICES as [string, ...string[]]));
 
 const money = z.number().min(0, "Must be 0 or more").max(999_999_999).nullable();
 
-// Payments are recorded only through convertLead / completeCustomer below, so they aren't editable here.
+// Payments are recorded on the customer (recordCustomerPayment below), so they aren't editable here.
 const leadPatchSchema = z
   .object({
     services: services.min(1, "Choose at least one service"),
@@ -28,8 +28,7 @@ const leadPatchSchema = z
   .strict();
 
 // Staff edit a lead from the Leads dashboard. "Converted" isn't set here: it
-// happens when an admin converts the lead (which needs a payment proof) and
-// creates the customer.
+// happens when an admin converts the lead into a customer.
 export async function updateLead(id: string, input: unknown): Promise<ActionResult> {
   return attempt(async () => {
     await requireAdmin();
@@ -43,7 +42,7 @@ export async function updateLead(id: string, input: unknown): Promise<ActionResu
 const customerOpsSchema = z
   .object({
     services,
-    // "Completed" goes through completeCustomer, which records the final payment first.
+    // "Completed" goes through completeCustomer (it checks an auditor is assigned).
     progressStatus: z.enum(["In progress", "Rescheduled"]),
     projectValue: money,
     serviceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date").nullable(),
@@ -74,37 +73,24 @@ export async function updateCustomerOps(id: string, input: unknown): Promise<Act
 }
 
 // ---- Converting a lead ----------------------------------------------------
+//
+// How a job runs: we get a lead, talk to them and keep the lead up to date here, convert it into a customer,
+// give them the service, and ask for payment once the service has been given. So converting needs no payment
+// (payments are recorded later on the customer), and neither does completing the job.
 
-const convertSchema = paymentDetailsSchema.extend({
-  totalAmount: z.number().positive("Enter the total amount of the deal").max(999_999_999),
-  status: z.enum(["Full Payment", "Partial"], { message: "Choose Fully paid or Partial" }),
-  amountPaid: z.number().positive("Enter the amount paid").max(999_999_999),
+const convertSchema = z.object({
+  // The deal total is optional here; it can be added later, with the first payment at the latest.
+  totalAmount: z.number().positive("Enter a valid amount, or leave it empty").max(999_999_999).nullable().optional(),
 });
 
-// Admin turns a lead into a customer. They must record the payment received
-// (amount, method, date, transaction id and a screenshot), which is kept on
-// the customer from then on.
-type PaymentInput = z.infer<typeof convertSchema>;
-
-// Records the payment on a pending lead and turns it into a customer. Shared by
-// convertLead (an existing lead) and createCustomerWithPayment (a new customer).
-async function finishConversion(id: string, data: PaymentInput): Promise<{ customerId: string | null }> {
-  // "Fully paid" means the whole deal was paid; "Partial" must be less than the total.
-  const paid = data.status === "Full Payment" ? data.totalAmount : data.amountPaid;
-  if (data.status === "Partial" && paid >= data.totalAmount) {
-    throw new Error("A partial payment must be less than the total amount. Choose “Fully paid” if the whole amount was paid.");
-  }
+// Turns a pending lead into a customer. Shared by convertLead (an existing lead) and createCustomer (a customer added by hand).
+async function finishConversion(id: string, totalAmount: number | null): Promise<{ customerId: string | null }> {
   const lead = (await requests.list()).find((r) => r.id === id);
   if (!lead) throw new Error("This lead no longer exists.");
   if (lead.status !== "PENDING") throw new Error("This lead was already converted or rejected.");
 
-  const payment = makePayment(paid, data);
   await requests.update(id, {
-    budgetQuote: data.totalAmount,
-    amountPaid: sumPayments([payment]),
-    paymentStatus: data.status,
-    paymentProofs: allProofs([payment]),
-    payments: [payment],
+    ...(totalAmount !== null ? { budgetQuote: totalAmount } : {}),
     leadStatus: "Converted",
   });
   try {
@@ -121,33 +107,28 @@ async function finishConversion(id: string, data: PaymentInput): Promise<{ custo
   }
 }
 
-// Admin turns a lead into a customer. They must record the payment received
-// (amount, method, date, transaction id and a screenshot), which is kept on
-// the customer from then on.
-export async function convertLead(id: string, input: unknown): Promise<ActionResult<{ customerId: string | null }>> {
+// Admin turns a lead into a customer. No payment is needed yet.
+export async function convertLead(id: string, input?: unknown): Promise<ActionResult<{ customerId: string | null }>> {
   return attempt(async () => {
     await requireAdmin();
-    return finishConversion(id, parseOrThrow(convertSchema, input, { plain: true }));
+    const data = parseOrThrow(convertSchema, input ?? {}, { plain: true });
+    return finishConversion(id, data.totalAmount ?? null);
   });
 }
 
-// "New customer": the same details as a lead plus the payment received. Nobody is
-// recorded as a customer until they have paid, so the lead and its payment are saved together.
-export async function createCustomerWithPayment(input: unknown): Promise<ActionResult<{ customerId: string | null }>> {
+// "New customer": the same details as a lead, added straight as a customer (a client who came to us by phone or referral).
+export async function createCustomer(input: unknown): Promise<ActionResult<{ customerId: string | null }>> {
   return attempt(async () => {
     await requireAdmin();
-    const raw = (input ?? {}) as { lead?: unknown; payment?: unknown };
+    const raw = (input ?? {}) as { lead?: unknown; totalAmount?: unknown };
     const lead = parseOrThrow(leadSchema, raw.lead ?? {});
-    const payment = parseOrThrow(convertSchema, raw.payment ?? {}, { plain: true });
-    if (payment.status === "Partial" && payment.amountPaid >= payment.totalAmount) {
-      throw new Error("A partial payment must be less than the total amount. Choose “Fully paid” if the whole amount was paid.");
-    }
+    const data = parseOrThrow(convertSchema, { totalAmount: raw.totalAmount ?? null }, { plain: true });
     const created = await requests.create(lead, { manual: true });
     try {
-      return await finishConversion(created.id, payment);
+      return await finishConversion(created.id, data.totalAmount ?? null);
     } catch (err) {
       // Don't leave a half-made lead behind if the conversion failed.
-      await requests.reject(created.id, "Removed: the payment could not be saved").catch(() => undefined);
+      await requests.reject(created.id, "Removed: the customer could not be created").catch(() => undefined);
       throw err;
     }
   });
@@ -155,43 +136,17 @@ export async function createCustomerWithPayment(input: unknown): Promise<ActionR
 
 // ---- Completing a customer's query -----------------------------------------
 
-// Admin marks a customer's query Completed. If the deal isn't fully paid yet
-// the final instalment (the remaining balance) must be recorded first. Returns
-// whether payment is now complete so the screen can remind the admin to send the report.
-export async function completeCustomer(id: string, input?: unknown): Promise<ActionResult<{ reminder: boolean }>> {
+// Admin marks a customer's query Completed: the service has been given. Payment is asked for after this, so none
+// is needed to complete. Returns reminder: true so the screen can prompt for the report and the payment request.
+export async function completeCustomer(id: string): Promise<ActionResult<{ reminder: boolean }>> {
   return attempt(async () => {
     await requireAdmin();
     const customer = await customers.get(id);
     if (!customer) throw new Error("This customer no longer exists.");
     if (!customer.assignedAuditorId) throw new Error("Assign an auditor to this query before completing it.");
-
-    const extra = (input ?? {}) as { totalAmount?: unknown; alreadyPaid?: unknown };
-    const patch: Partial<CustomerInput> = { progressStatus: "Completed" };
-    if (customer.paymentStatus !== "Full Payment") {
-      // Customers added by hand (or converted before payments were tracked) may have no deal total yet.
-      let total = customer.projectValue;
-      if (total === null) {
-        const entered = Number(extra.totalAmount);
-        if (!Number.isFinite(entered) || entered <= 0) throw new Error("Enter the total amount of the deal.");
-        total = Math.round(entered * 100) / 100;
-        patch.projectValue = total;
-      }
-      // The final instalment is whatever is still owed.
-      const balance = Math.round((total - customer.amountPaid) * 100) / 100;
-      if (extra.alreadyPaid === true && customer.payments.length === 0) {
-        // Nothing was ever recorded here, and the admin confirms it was all paid earlier.
-        patch.amountPaid = total;
-      } else if (balance > 0) {
-        const details = parseOrThrow(paymentDetailsSchema, input, { plain: true });
-        const payments = [...customer.payments, makePayment(balance, details)];
-        patch.payments = payments;
-        patch.amountPaid = sumPayments(payments);
-        patch.paymentProofs = allProofs(payments);
-      }
-      patch.paymentStatus = "Full Payment";
-    }
-    await customers.update(id, patch);
+    await customers.update(id, { progressStatus: "Completed" });
     revalidatePath("/customers");
+    revalidatePath("/");
     return { reminder: true };
   });
 }

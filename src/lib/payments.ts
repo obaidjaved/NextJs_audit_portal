@@ -13,7 +13,8 @@ export const paymentDetailsSchema = z.object({
   method: z.enum(PAYMENT_METHODS, { message: "Choose PayPal or Bank Transfer" }),
   date,
   transactionId: z.string().trim().min(1, "Enter the transaction ID").max(120),
-  proofs: z.array(z.string().max(3_000_000).refine(isProofRef, "Not a valid file")).min(1, "Attach a screenshot or invoice").max(5, "Up to 5 files"),
+  // A screenshot or invoice is welcome but never required to record a payment.
+  proofs: z.array(z.string().max(3_000_000).refine(isProofRef, "Not a valid file")).max(5, "Up to 5 files").default([]),
 });
 
 export type PaymentDetails = z.infer<typeof paymentDetailsSchema>;

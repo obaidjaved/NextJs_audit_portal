@@ -45,7 +45,7 @@ export default async function LeadsPage() {
         <div>
           <h1 className="disp" style={{ fontSize: 22, fontWeight: 800 }}>Leads</h1>
           <p style={{ color: "var(--ink-2)", fontSize: 13, marginTop: 4 }}>
-            Every request-a-quote submission, plus leads you add yourself. Track each one; once the customer has paid, attach the proof and convert it into a customer.
+            Every request-a-quote submission, plus leads you add yourself. Talk to each one and keep their status up to date; when they agree, convert them into a customer. Payment is recorded later, after the service is given.
           </p>
         </div>
         <Link href="/leads/new" className="btn primary">+ Add lead</Link>

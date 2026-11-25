@@ -10,7 +10,7 @@ import type { PaymentRecord } from "@/lib/repo-types";
 import { InlineSelect } from "@/components/ops/Inline";
 import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
 import { PaymentHistoryDialog } from "@/components/ops/PaymentHistory";
-import { PaymentDialog, ReminderToast } from "@/components/ops/Payments";
+import { CompleteDialog, ReminderToast } from "@/components/ops/Payments";
 import { CallEmail, ContactCell, PaymentPill, ServiceChips, fmtDate } from "@/components/ops/Parts";
 import { CustomerDetails } from "./CustomerDetails";
 
@@ -94,7 +94,7 @@ export function CustomersTable({ customers, isAdmin }: { customers: CustomerOpsR
   const paying = customers.find((c) => c.id === payId) ?? null;
   const closeReminder = useCallback(() => setReminderFor(null), []);
 
-  // "Completed" opens the payment check first; the other statuses are plain edits.
+  // "Completed" opens a short confirmation first; the other statuses are plain edits.
   async function saveStatus(c: CustomerOpsRow, value: string) {
     if (value === "Completed") {
       setCompleteId(c.id);
@@ -293,19 +293,16 @@ export function CustomersTable({ customers, isAdmin }: { customers: CustomerOpsR
       )}
 
       {completing && (
-        <PaymentDialog
-          mode="complete"
+        <CompleteDialog
           title={`Complete ${completing.name}`}
           auditor={completing.assignedAuditorName}
           total={completing.projectValue}
           paid={completing.amountPaid}
-          paymentStatus={completing.paymentStatus}
           assigned={!!completing.assignedAuditorId}
           hasReport={!!completing.finalReportId}
-          hasPayments={completing.payments.length > 0}
           onClose={() => setCompleteId(null)}
-          onSubmit={async (details) => {
-            const res = unwrap(await completeCustomer(completing.id, details));
+          onSubmit={async () => {
+            const res = unwrap(await completeCustomer(completing.id));
             setCompleteId(null);
             setReminderFor(completing.name);
             router.refresh();
@@ -314,7 +311,17 @@ export function CustomersTable({ customers, isAdmin }: { customers: CustomerOpsR
         />
       )}
 
-      {reminderFor && <ReminderToast onClose={closeReminder} onGo={() => router.push(`/audits?q=${encodeURIComponent(reminderFor)}`)} />}
+      {reminderFor && (
+        <ReminderToast
+          onClose={closeReminder}
+          onGo={() => router.push(`/audits?q=${encodeURIComponent(reminderFor)}`)}
+          onPay={() => {
+            const id = customers.find((c) => c.name === reminderFor)?.id;
+            setReminderFor(null);
+            if (id) setPayId(id);
+          }}
+        />
+      )}
     </div>
   );
 }

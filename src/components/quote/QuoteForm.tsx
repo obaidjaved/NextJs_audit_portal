@@ -3,8 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createLead, submitQuoteRequest } from "@/lib/actions/quote-requests";
-import { createCustomerWithPayment } from "@/lib/actions/ops";
-import { PaymentSection, checkPayment, emptyPayment, paymentPayload, type PaymentFormState } from "@/components/ops/PaymentSection";
+import { createCustomer } from "@/lib/actions/ops";
 import { unwrap } from "@/lib/actions/result";
 import { useRecaptcha } from "@/components/quote/useRecaptcha";
 import { SERVICE_GROUPS, US_STATES } from "@/lib/quote-options";
@@ -59,7 +58,7 @@ export function QuoteForm({
 }) {
   const staff = internal || customer;
   const router = useRouter();
-  const [payment, setPayment] = useState<PaymentFormState>(emptyPayment);
+  const [dealTotal, setDealTotal] = useState(""); // staff adding a customer: the agreed total, if known (optional)
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -78,14 +77,15 @@ export function QuoteForm({
     setError(null);
     if (services.length === 0) return setError("Choose at least one type of service.");
     if (staff && !f.phone.trim() && !f.email.trim()) return setError("Enter a phone number or an email address.");
-    if (customer) {
-      const problem = checkPayment(payment);
-      if (problem) return setError(problem);
+    let totalAmount: number | null = null;
+    if (customer && dealTotal.trim() !== "") {
+      totalAmount = Number(dealTotal);
+      if (!Number.isFinite(totalAmount) || totalAmount <= 0) return setError("Enter a valid deal amount, or leave it empty.");
     }
     startTransition(async () => {
       try {
         if (customer) {
-          const res = unwrap(await createCustomerWithPayment({ lead: { ...f, services }, payment: paymentPayload(payment) }));
+          const res = unwrap(await createCustomer({ lead: { ...f, services }, totalAmount }));
           router.refresh();
           onDone?.(res.ok ? res.customerId : null);
           return;
@@ -230,8 +230,11 @@ export function QuoteForm({
 
       {customer && (
         <section>
-          <h2 style={SECTION}>Payment received</h2>
-          <PaymentSection value={payment} onChange={(patch) => setPayment((s) => ({ ...s, ...patch }))} />
+          <h2 style={SECTION}>Deal</h2>
+          <Field label="Total amount of deal (optional)">
+            <input className="input" inputMode="decimal" value={dealTotal} onChange={(e) => setDealTotal(e.target.value)} placeholder="Agreed amount, if known" />
+          </Field>
+          <p style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 8 }}>Payment is recorded later, once the service has been given.</p>
         </section>
       )}
 

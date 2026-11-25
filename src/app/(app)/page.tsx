@@ -75,12 +75,15 @@ export default async function ConsolePage() {
 
   // The to-do list: only what needs attention right now.
   const waitingForReview = lines.filter((r) => r.review === "Pending approval").length;
+  // Payment is asked for after the service is given: jobs marked Completed that aren't fully paid yet.
+  const awaitingPayment = isAdmin ? customerRows.filter((c) => c.progressStatus === "Completed" && c.paymentStatus !== "Full Payment").length : 0;
   const notStarted = isAdmin ? 0 : lines.filter((r) => r.review === null).length;
   const steps: NextStep[] = isAdmin
     ? [
         { count: leadList ? leadList.filter((l) => l.status === "PENDING").length : 0, text: "new leads waiting for a decision", action: "Review leads", href: "/leads", urgent: true },
         { count: countView("unassigned") ?? 0, text: "customers waiting for an auditor", action: "Assign auditors", href: "/audits?view=unassigned" },
         { count: waitingForReview, text: "submitted reports waiting for your review", action: "Review reports", href: "/audits?status=Pending%20approval", urgent: true },
+        { count: awaitingPayment, text: awaitingPayment === 1 ? "completed job waiting for payment" : "completed jobs waiting for payment", action: "Collect payment", href: "/customers" },
       ]
     : [
         { count: sentBack, text: sentBack === 1 ? "report was sent back for corrections" : "reports were sent back for corrections", action: "See instructions", href: "/audits?status=Needs%20Correction", urgent: true },

@@ -12,12 +12,14 @@ interface Step {
 
 const ADMIN_STEPS: Step[] = [
   { title: "A lead comes in", body: "People fill in the Request a Quote form on the website, and it lands in Leads. You can also add one yourself (a phone call, an email).", href: "/leads", link: "Open Leads" },
-  { title: "Turn the lead into a customer", body: "Open the lead, choose Convert, and record the payment received (amount, how it was paid, date and a screenshot). A lead only becomes a customer once it is paid. You can also add a paid customer directly with “+ New Customer”.", href: "/customers", link: "Open Customers" },
+  { title: "Talk to them and keep the lead up to date", body: "Call or email the lead, then update its status (Contacted, In progress, Cold, Not Interested) and the deal amount as you go, so the portal always shows where it stands.", href: "/leads", link: "Open Leads" },
+  { title: "Turn the lead into a customer", body: "When they agree, open the lead and choose Convert. No payment is needed at this point. You can also add a customer directly with “+ New Customer”.", href: "/customers", link: "Open Customers" },
   { title: "Choose the auditor", body: "On the Audits tab, every customer waiting for an audit has a “Name of auditor” box. Pick the auditor there. They are emailed, and the job shows up on their dashboard.", href: "/audits?view=unassigned", link: "Audits to assign" },
   { title: "The auditor does the audit", body: "They open the job, fill in the audit, press Complete Audit, and then Submit. Until they submit, it is still theirs to edit.", },
   { title: "Review the report", body: "A submitted report shows as “Pending approval”. Open it, then use the Status box: Approved if it's right, or Needs Correction to send it back. When you send it back you write what to fix, and the auditor sees your note.", href: "/audits?status=Pending%20approval", link: "Reports to review" },
   { title: "Send it to the customer", body: "Once a report is Approved, “Send Report” and “Create public link” unlock. Send Report emails the PDF to the customer using one of your email templates.", href: "/audits?view=completed", link: "Approved reports" },
-  { title: "Finish the customer", body: "When the work is done, mark the customer Completed and record any final payment. Payment Status on the Customers tab shows every payment, and what is still owed.", href: "/customers", link: "Open Customers" },
+  { title: "Mark the job completed", body: "When the service has been given, mark the customer Completed. This does not need a payment. The Console then reminds you to send the report and ask for payment.", href: "/customers", link: "Open Customers" },
+  { title: "Ask for payment and record it", body: "After the service is given, ask the customer to pay. Open the customer's Payments and record each payment (amount, how it was paid, date and transaction ID). A screenshot or invoice is optional. Payment Status shows every payment and what is still owed.", href: "/customers", link: "Open Customers" },
 ];
 
 const AUDITOR_STEPS: Step[] = [

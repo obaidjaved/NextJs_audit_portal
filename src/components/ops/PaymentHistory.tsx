@@ -60,7 +60,6 @@ export function PaymentHistoryDialog({
     if (!Number.isFinite(value) || value <= 0) return setError("Enter the amount received.");
     if (balance !== null && value > balance + 0.004) return setError(`The most you can record is ${money(balance)} (the balance still due).`);
     if (!transactionId.trim()) return setError("Enter the transaction ID.");
-    if (proofs.length === 0) return setError("Attach a screenshot or invoice of the payment.");
     startTransition(async () => {
       try {
         const res = unwrap(await recordCustomerPayment(customerId, { amount: value, method, date, transactionId, proofs, ...(total === null ? { totalAmount: totalKnown } : {}) }));
@@ -142,7 +141,7 @@ export function PaymentHistoryDialog({
               <input className="input" required maxLength={120} value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
             </div>
             <div className="dtl-wide">
-              <Label>Attach screenshot</Label>
+              <Label>Attach screenshot (optional)</Label>
               <ProofPicker value={proofs} onChange={setProofs} />
             </div>
           </div>

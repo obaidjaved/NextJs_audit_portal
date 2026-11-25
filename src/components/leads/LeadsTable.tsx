@@ -9,7 +9,7 @@ import { SERVICE_GROUPS } from "@/lib/quote-options";
 import type { PaymentRecord } from "@/lib/repo-types";
 import { InlineSelect } from "@/components/ops/Inline";
 import { FilterBar, Pagination, usePaged } from "@/components/ops/ListControls";
-import { PaymentDialog } from "@/components/ops/Payments";
+import { ConvertDialog } from "@/components/ops/Payments";
 import { CallEmail, ContactCell, ServiceChips, fmtDate } from "@/components/ops/Parts";
 import { LeadDetails } from "./LeadDetails";
 
@@ -235,8 +235,7 @@ export function LeadsTable({ leads, canReview }: { leads: LeadRow[]; canReview: 
       )}
 
       {converting && (
-        <PaymentDialog
-          mode="convert"
+        <ConvertDialog
           title={`Convert ${converting.companyName}`}
           defaultTotal={converting.budgetQuote}
           onClose={() => setConvertId(null)}
